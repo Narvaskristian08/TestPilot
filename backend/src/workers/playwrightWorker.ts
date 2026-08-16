@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, Browser, BrowserContext, Page } from 'playwright';
-import { TEST_TYPES, TEST_RESULT_STATUS, CONFIG } from '../config/constants';
+import { TEST_TYPES, TEST_RESULT_STATUS, CONFIG, ERROR_CATEGORY } from '../config/constants';
 import { TestResultModel } from '../models/TestResult';
 import { TestRunModel } from '../models/TestRun';
 import { TestArtifactModel } from '../models/TestArtifact';
@@ -20,9 +20,16 @@ export interface TestExecutionResult {
   testType: keyof typeof TEST_TYPES;
   status: keyof typeof TEST_RESULT_STATUS;
   error_message?: string;
+  error_category?: keyof typeof ERROR_CATEGORY;
+  expected_behavior?: string;
+  actual_behavior?: string;
+  url?: string;
   details: any;
   duration_ms: number;
   screenshot?: string;
+  trace?: string;
+  console_errors?: string[];
+  network_errors?: string[];
 }
 
 export type ProgressCallback = (event: {
@@ -103,11 +110,23 @@ export class PlaywrightWorker {
     try {
       await this.initialize();
 
-      // Create browser context
+      // Create browser context with trace recording enabled
       this.context = await this.browser!.newContext({
         viewport: { width: 1280, height: 720 },
         userAgent: 'TestPilot/1.0 (Automated QA Testing; +https://testpilot.io)',
         ignoreHTTPSErrors: true,
+      });
+
+      // Start tracing for failure evidence
+      const traceDir = path.join(CONFIG.ARTIFACTS_PATH, `run-${runId}`);
+      if (!fs.existsSync(traceDir)) {
+        fs.mkdirSync(traceDir, { recursive: true });
+      }
+
+      await this.context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: false, // Don't include source code to keep trace size reasonable
       });
 
       this.page = await this.context.newPage();
@@ -210,7 +229,7 @@ export class PlaywrightWorker {
       step++;
       this.emitProgress(runId, 'Console Errors', TEST_TYPES.CONSOLE_ERRORS, 'running', Math.round((step / totalSteps) * 100));
 
-      const consoleResult = buildConsoleTestResult(consoleCollector, 0);
+      const consoleResult = buildConsoleTestResult(consoleCollector, 0, this.page.url());
       results.push({
         testName: 'Console Errors',
         testType: TEST_TYPES.CONSOLE_ERRORS,
@@ -230,6 +249,8 @@ export class PlaywrightWorker {
           ? TEST_RESULT_STATUS.WARNING
           : TEST_RESULT_STATUS.FAILED;
 
+      const firstNetworkError = networkErrors[0];
+
       results.push({
         testName: 'Network Errors',
         testType: TEST_TYPES.NETWORK_ERRORS,
@@ -238,6 +259,10 @@ export class PlaywrightWorker {
           networkErrors.length > 0
             ? `Found ${networkErrors.length} failed HTTP request(s)`
             : undefined,
+        error_category: networkErrors.length > 0 ? ERROR_CATEGORY.NETWORK_ERROR : undefined,
+        expected_behavior: networkErrors.length > 0 ? 'All HTTP requests should return 2xx or 3xx status codes' : undefined,
+        actual_behavior: networkErrors.length > 0 ? `${networkErrors.length} requests failed: ${firstNetworkError}` : undefined,
+        url: page.url(),
         details: {
           errorCount: networkErrors.length,
           errors: networkErrors.slice(0, 20),
@@ -260,11 +285,28 @@ export class PlaywrightWorker {
 
       this.emitProgress(runId, 'Accessibility', TEST_TYPES.ACCESSIBILITY, a11yResult.status, 100);
 
-      // ── Screenshot ───────────────────────────────────────────────────────
-      const screenshotPath = await this.captureScreenshot(runId);
+      // ── Save Trace (if any failures/warnings) ────────────────────────────
+      const hasFailuresOrWarnings = results.some(
+        r => r.status === TEST_RESULT_STATUS.FAILED || r.status === TEST_RESULT_STATUS.WARNING
+      );
+
+      let tracePath: string | undefined;
+      if (hasFailuresOrWarnings && this.context) {
+        try {
+          const traceFile = path.join(CONFIG.ARTIFACTS_PATH, `run-${runId}`, `trace-${Date.now()}.zip`);
+          await this.context.tracing.stop({ path: traceFile });
+          tracePath = traceFile;
+          console.log(`[PlaywrightWorker] Trace saved: ${traceFile}`);
+        } catch (error) {
+          console.error('[PlaywrightWorker] Failed to save trace:', error);
+        }
+      } else if (this.context) {
+        // Stop tracing without saving
+        await this.context.tracing.stop().catch(() => {});
+      }
 
       // Save everything to DB
-      await this.saveResults(runId, results, Date.now() - startTime, screenshotPath);
+      await this.saveResults(runId, results, Date.now() - startTime, tracePath);
     } catch (error: any) {
       console.error('[PlaywrightWorker] Test execution error:', error);
 
@@ -284,9 +326,9 @@ export class PlaywrightWorker {
   }
 
   /**
-   * Capture a full-page screenshot
+   * Capture a screenshot for a specific test
    */
-  private async captureScreenshot(runId: number): Promise<string | undefined> {
+  private async captureTestScreenshot(runId: number, testName: string): Promise<string | undefined> {
     if (!this.page) return undefined;
 
     try {
@@ -296,14 +338,15 @@ export class PlaywrightWorker {
         fs.mkdirSync(screenshotDir, { recursive: true });
       }
 
-      const filename = `screenshot-${Date.now()}.png`;
+      const sanitizedTestName = testName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      const filename = `screenshot-${sanitizedTestName}-${Date.now()}.png`;
       const filepath = path.join(screenshotDir, filename);
 
       await this.page.screenshot({ path: filepath, fullPage: true });
 
       return filepath;
     } catch (error) {
-      console.error('[PlaywrightWorker] Screenshot capture failed:', error);
+      console.error(`[PlaywrightWorker] Screenshot capture failed for ${testName}:`, error);
       return undefined;
     }
   }
@@ -315,7 +358,7 @@ export class PlaywrightWorker {
     runId: number,
     results: TestExecutionResult[],
     totalDuration: number,
-    screenshotPath?: string
+    tracePath?: string
   ): Promise<void> {
     let passed = 0;
     let failed = 0;
@@ -326,23 +369,44 @@ export class PlaywrightWorker {
       else if (result.status === TEST_RESULT_STATUS.FAILED) failed++;
       else if (result.status === TEST_RESULT_STATUS.WARNING) warnings++;
 
+      // Capture screenshot for failed and warning tests
+      let screenshotPath: string | undefined;
+      if (result.status === TEST_RESULT_STATUS.FAILED || result.status === TEST_RESULT_STATUS.WARNING) {
+        screenshotPath = await this.captureTestScreenshot(runId, result.testName);
+      }
+
       const savedResult = TestResultModel.create({
         run_id: runId,
         test_name: result.testName,
         test_type: result.testType,
         status: result.status,
         error_message: result.error_message,
+        error_category: result.error_category,
+        expected_behavior: result.expected_behavior,
+        actual_behavior: result.actual_behavior,
+        url: result.url,
         details: JSON.stringify(result.details),
         duration_ms: result.duration_ms,
       });
 
-      // Attach screenshot to the last result that has one
-      if (screenshotPath && result === results[results.length - 1] && savedResult.id) {
+      // Attach screenshot artifact if available
+      if (screenshotPath && savedResult.id) {
         const stats = fs.statSync(screenshotPath);
         TestArtifactModel.create({
           result_id: savedResult.id,
           artifact_type: 'SCREENSHOT',
           file_path: screenshotPath,
+          file_size: stats.size,
+        });
+      }
+
+      // Attach trace artifact to first failed test (trace covers all tests)
+      if (tracePath && savedResult.id && result.status === TEST_RESULT_STATUS.FAILED && failed === 1) {
+        const stats = fs.statSync(tracePath);
+        TestArtifactModel.create({
+          result_id: savedResult.id,
+          artifact_type: 'TRACE',
+          file_path: tracePath,
           file_size: stats.size,
         });
       }

@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { TestResultData } from './availabilityTest';
 import fs from 'fs';
 import path from 'path';
@@ -68,12 +68,21 @@ export async function runAccessibilityTest(page: Page): Promise<TestResultData> 
       status = TEST_RESULT_STATUS.WARNING;
     }
 
+    const firstViolation = violations[0];
+    const url = page.url();
+
     return {
       status,
       error_message:
         violations.length > 0
           ? `Found ${violations.length} accessibility violation(s) (${critical.length} critical, ${serious.length} serious)`
           : undefined,
+      error_category: violations.length > 0 ? ERROR_CATEGORY.ACCESSIBILITY : undefined,
+      expected_behavior: violations.length > 0 ? 'Page should meet WCAG 2.0 Level A/AA accessibility standards' : undefined,
+      actual_behavior: violations.length > 0 && firstViolation
+        ? `${violations.length} violation(s) including: ${firstViolation.help}`
+        : undefined,
+      url,
       details: {
         totalViolations: violations.length,
         critical: critical.length,
@@ -86,9 +95,14 @@ export async function runAccessibilityTest(page: Page): Promise<TestResultData> 
       duration_ms: Date.now() - startTime,
     };
   } catch (error: any) {
+    const url = page.url();
     return {
       status: TEST_RESULT_STATUS.WARNING,
       error_message: 'Accessibility test could not complete: ' + (error.message || 'Unknown error'),
+      error_category: ERROR_CATEGORY.ACCESSIBILITY,
+      expected_behavior: 'Accessibility audit should complete successfully',
+      actual_behavior: error.message || 'Accessibility test failed',
+      url,
       details: { error: error.message },
       duration_ms: Date.now() - startTime,
     };

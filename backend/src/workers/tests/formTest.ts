@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { discoverForms } from '../utils/discovery';
 import { isSafeForm } from '../utils/safety';
 import { TestResultData } from './availabilityTest';
@@ -16,9 +16,14 @@ export async function runFormTest(page: Page): Promise<TestResultData> {
     const forms = await discoverForms(page);
 
     if (forms.length === 0) {
+      const url = page.url();
       return {
         status: TEST_RESULT_STATUS.WARNING,
         error_message: 'No forms found on the page',
+        error_category: ERROR_CATEGORY.FORM_VALIDATION,
+        expected_behavior: 'Page may contain HTML forms',
+        actual_behavior: 'No <form> elements found',
+        url,
         details: {
           formsFound: 0,
           note: 'Page may not use traditional HTML forms.',
@@ -67,9 +72,14 @@ export async function runFormTest(page: Page): Promise<TestResultData> {
       duration_ms: Date.now() - startTime,
     };
   } catch (error: any) {
+    const url = page.url();
     return {
       status: TEST_RESULT_STATUS.WARNING,
       error_message: 'Could not analyse forms: ' + (error.message || 'Unknown error'),
+      error_category: ERROR_CATEGORY.FORM_VALIDATION,
+      expected_behavior: 'Form discovery should complete successfully',
+      actual_behavior: error.message || 'Form analysis failed',
+      url,
       details: { error: error.message },
       duration_ms: Date.now() - startTime,
     };

@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { discoverButtons } from '../utils/discovery';
 import { isDestructiveAction } from '../utils/safety';
 import { TestResultData } from './availabilityTest';
@@ -39,9 +39,14 @@ export async function runButtonTest(page: Page): Promise<TestResultData> {
       duration_ms: Date.now() - startTime,
     };
   } catch (error: any) {
+    const url = page.url();
     return {
       status: TEST_RESULT_STATUS.WARNING,
       error_message: 'Could not analyse buttons: ' + (error.message || 'Unknown error'),
+      error_category: ERROR_CATEGORY.BUTTON,
+      expected_behavior: 'Button discovery should complete successfully',
+      actual_behavior: error.message || 'Button analysis failed',
+      url,
       details: { error: error.message },
       duration_ms: Date.now() - startTime,
     };

@@ -1,5 +1,5 @@
 import { BrowserContext } from 'playwright';
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { TestResultData } from './availabilityTest';
 
 const VIEWPORTS = [
@@ -65,6 +65,7 @@ export async function runResponsiveTest(
 
   const failedViewports = results.filter((r) => !r.passed);
   const allPassed = failedViewports.length === 0;
+  const firstFailed = failedViewports[0];
 
   return {
     status: allPassed
@@ -75,6 +76,12 @@ export async function runResponsiveTest(
     error_message: !allPassed
       ? `Layout issues detected at: ${failedViewports.map((r) => r.viewport).join(', ')}`
       : undefined,
+    error_category: !allPassed ? ERROR_CATEGORY.RESPONSIVE : undefined,
+    expected_behavior: !allPassed ? 'Page should display without horizontal scrolling at all viewport sizes' : undefined,
+    actual_behavior: !allPassed && firstFailed
+      ? `${firstFailed.viewport} (${firstFailed.width}x${firstFailed.height}) has ${firstFailed.hasHorizontalScroll ? 'horizontal scroll' : firstFailed.error}`
+      : undefined,
+    url,
     details: {
       viewportsTested: results.length,
       passed: results.filter((r) => r.passed).length,

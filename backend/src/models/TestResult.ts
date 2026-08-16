@@ -8,6 +8,10 @@ export interface TestResult {
   test_type: keyof typeof TEST_TYPES;
   status: keyof typeof TEST_RESULT_STATUS;
   error_message?: string | null;
+  error_category?: string | null;
+  expected_behavior?: string | null;
+  actual_behavior?: string | null;
+  url?: string | null;
   details?: string | null; // JSON string
   duration_ms?: number | null;
   created_at?: string;
@@ -16,8 +20,14 @@ export interface TestResult {
 export class TestResultModel {
   static create(result: Omit<TestResult, 'id' | 'created_at'>): TestResult {
     const stmt = db.prepare(`
-      INSERT INTO test_results (run_id, test_name, test_type, status, error_message, details, duration_ms)
-      VALUES (@run_id, @test_name, @test_type, @status, @error_message, @details, @duration_ms)
+      INSERT INTO test_results (
+        run_id, test_name, test_type, status, error_message, error_category,
+        expected_behavior, actual_behavior, url, details, duration_ms
+      )
+      VALUES (
+        @run_id, @test_name, @test_type, @status, @error_message, @error_category,
+        @expected_behavior, @actual_behavior, @url, @details, @duration_ms
+      )
     `);
 
     const info = stmt.run({
@@ -26,6 +36,10 @@ export class TestResultModel {
       test_type: result.test_type,
       status: result.status,
       error_message: result.error_message || null,
+      error_category: result.error_category || null,
+      expected_behavior: result.expected_behavior || null,
+      actual_behavior: result.actual_behavior || null,
+      url: result.url || null,
       details: result.details || null,
       duration_ms: result.duration_ms || null,
     });
@@ -45,8 +59,14 @@ export class TestResultModel {
 
   static createMany(results: Omit<TestResult, 'id' | 'created_at'>[]): void {
     const stmt = db.prepare(`
-      INSERT INTO test_results (run_id, test_name, test_type, status, error_message, details, duration_ms)
-      VALUES (@run_id, @test_name, @test_type, @status, @error_message, @details, @duration_ms)
+      INSERT INTO test_results (
+        run_id, test_name, test_type, status, error_message, error_category,
+        expected_behavior, actual_behavior, url, details, duration_ms
+      )
+      VALUES (
+        @run_id, @test_name, @test_type, @status, @error_message, @error_category,
+        @expected_behavior, @actual_behavior, @url, @details, @duration_ms
+      )
     `);
 
     const insertMany = db.transaction((results: Omit<TestResult, 'id' | 'created_at'>[]) => {
@@ -57,6 +77,10 @@ export class TestResultModel {
           test_type: result.test_type,
           status: result.status,
           error_message: result.error_message || null,
+          error_category: result.error_category || null,
+          expected_behavior: result.expected_behavior || null,
+          actual_behavior: result.actual_behavior || null,
+          url: result.url || null,
           details: result.details || null,
           duration_ms: result.duration_ms || null,
         });

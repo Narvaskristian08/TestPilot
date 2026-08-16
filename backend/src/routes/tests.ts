@@ -90,17 +90,31 @@ router.get(
 
     const results = TestResultModel.findByRunId(id);
 
-    // Parse JSON details for convenience
-    const parsed = results.map((r) => ({
-      ...r,
-      details: (() => {
-        try {
-          return r.details ? JSON.parse(r.details as string) : null;
-        } catch {
-          return r.details;
-        }
-      })(),
-    }));
+    // Parse JSON details and attach artifacts for each result
+    const parsed = results.map((r) => {
+      const artifacts = r.id ? TestArtifactModel.findByResultId(r.id) : [];
+      
+      // Build public URLs for artifacts
+      const artifactsWithUrls = artifacts.map((a) => {
+        const relative = path.relative(CONFIG.ARTIFACTS_PATH, a.file_path);
+        return {
+          ...a,
+          url: `/api/artifacts/${relative}`,
+        };
+      });
+
+      return {
+        ...r,
+        details: (() => {
+          try {
+            return r.details ? JSON.parse(r.details as string) : null;
+          } catch {
+            return r.details;
+          }
+        })(),
+        artifacts: artifactsWithUrls,
+      };
+    });
 
     return res.json({
       status: 'success',

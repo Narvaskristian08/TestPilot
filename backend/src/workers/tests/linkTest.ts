@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { discoverLinks, isSameDomain } from '../utils/discovery';
 import { shouldCrawlUrl } from '../utils/safety';
 import { TestResultData } from './availabilityTest';
@@ -15,9 +15,14 @@ export async function runLinkTest(page: Page, baseUrl: string, maxLinks: number 
     const links = await discoverLinks(page);
     
     if (links.length === 0) {
+      const url = page.url();
       return {
         status: TEST_RESULT_STATUS.WARNING,
         error_message: 'No links found on page',
+        error_category: ERROR_CATEGORY.NAVIGATION,
+        expected_behavior: 'Page should contain clickable links (<a> tags with href)',
+        actual_behavior: 'No links found on the page',
+        url,
         details: {
           totalLinks: 0,
           testedLinks: 0,
@@ -87,9 +92,15 @@ export async function runLinkTest(page: Page, baseUrl: string, maxLinks: number 
         ? TEST_RESULT_STATUS.WARNING 
         : TEST_RESULT_STATUS.FAILED;
 
+    const firstBrokenLink = results.find(r => !r.success);
+
     return {
       status: testStatus,
       error_message: brokenLinks > 0 ? `Found ${brokenLinks} broken link(s)` : undefined,
+      error_category: brokenLinks > 0 ? ERROR_CATEGORY.BROKEN_LINK : undefined,
+      expected_behavior: brokenLinks > 0 ? 'All links should return HTTP 200-399 (successful response)' : undefined,
+      actual_behavior: brokenLinks > 0 && firstBrokenLink ? `Link "${firstBrokenLink.url}" returned ${firstBrokenLink.error || 'error'}` : undefined,
+      url: firstBrokenLink?.url,
       details: {
         totalLinksFound: links.length,
         sameDomainLinks: sameDomainLinks.length,
@@ -101,9 +112,14 @@ export async function runLinkTest(page: Page, baseUrl: string, maxLinks: number 
       duration_ms: Date.now() - startTime,
     };
   } catch (error: any) {
+    const url = page.url();
     return {
       status: TEST_RESULT_STATUS.FAILED,
       error_message: error.message || 'Link test failed',
+      error_category: ERROR_CATEGORY.UNKNOWN,
+      expected_behavior: 'Link discovery and testing should complete successfully',
+      actual_behavior: error.message || 'Link test failed',
+      url,
       details: {
         error: error.message,
       },

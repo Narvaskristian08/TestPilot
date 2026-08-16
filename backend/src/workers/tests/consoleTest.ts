@@ -1,4 +1,4 @@
-import { TEST_RESULT_STATUS } from '../../config/constants';
+import { TEST_RESULT_STATUS, ERROR_CATEGORY } from '../../config/constants';
 import { TestResultData } from './availabilityTest';
 
 export interface ConsoleErrorCollector {
@@ -38,7 +38,8 @@ export function createConsoleCollector(page: import('playwright').Page): Console
  */
 export function buildConsoleTestResult(
   collector: ConsoleErrorCollector,
-  duration_ms: number
+  duration_ms: number,
+  pageUrl?: string
 ): TestResultData {
   const totalErrors = collector.errors.length + collector.pageErrors.length;
 
@@ -51,12 +52,18 @@ export function buildConsoleTestResult(
     status = TEST_RESULT_STATUS.FAILED;
   }
 
+  const firstError = collector.errors[0] || collector.pageErrors[0];
+
   return {
     status,
     error_message:
       totalErrors > 0
         ? `Found ${totalErrors} console error(s) and ${collector.pageErrors.length} uncaught exception(s)`
         : undefined,
+    error_category: totalErrors > 0 ? ERROR_CATEGORY.CONSOLE_ERROR : undefined,
+    expected_behavior: totalErrors > 0 ? 'Page should load without JavaScript errors in the console' : undefined,
+    actual_behavior: totalErrors > 0 ? `${totalErrors} console error(s): ${firstError?.substring(0, 100)}` : undefined,
+    url: pageUrl,
     details: {
       consoleErrors: collector.errors.slice(0, 20),
       pageErrors: collector.pageErrors.slice(0, 10),

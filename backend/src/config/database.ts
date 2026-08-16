@@ -72,6 +72,10 @@ export function initDatabase() {
       test_type TEXT NOT NULL,
       status TEXT NOT NULL,
       error_message TEXT,
+      error_category TEXT,
+      expected_behavior TEXT,
+      actual_behavior TEXT,
+      url TEXT,
       details TEXT,
       duration_ms INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -100,7 +104,34 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_test_artifacts_result_id ON test_artifacts(result_id);
   `);
 
+  // Run migrations for existing databases
+  runMigrations();
+
   console.log('Database schema initialized successfully');
+}
+
+/**
+ * Run database migrations to add new columns to existing tables
+ */
+function runMigrations() {
+  // Check if error_category column exists
+  const columns = db.pragma("table_info(test_results)") as Array<{ name: string }>;
+  const hasErrorCategory = columns.some(col => col.name === 'error_category');
+  
+  if (!hasErrorCategory) {
+    console.log('Running migration: Adding new columns to test_results table...');
+    try {
+      db.exec(`
+        ALTER TABLE test_results ADD COLUMN error_category TEXT;
+        ALTER TABLE test_results ADD COLUMN expected_behavior TEXT;
+        ALTER TABLE test_results ADD COLUMN actual_behavior TEXT;
+        ALTER TABLE test_results ADD COLUMN url TEXT;
+      `);
+      console.log('Migration completed successfully');
+    } catch (error) {
+      console.log('Migration skipped or already applied');
+    }
+  }
 }
 
 // Initialize on import
