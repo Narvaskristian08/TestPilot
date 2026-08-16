@@ -32,20 +32,20 @@ class ApiClient {
    * Create a new test run
    */
   async createTestRun(url: string): Promise<TestRun> {
-    const response = await this.request<{ testRun: TestRun }>('/tests', {
+    const response = await this.request<TestRun>('/tests', {
       method: 'POST',
       body: JSON.stringify({ url }),
     });
 
-    return response.data!.testRun;
+    return response.data!;
   }
 
   /**
    * Get test run by ID
    */
   async getTestRun(id: number): Promise<TestRun> {
-    const response = await this.request<{ testRun: TestRun }>(`/tests/${id}`);
-    return response.data!.testRun;
+    const response = await this.request<TestRun>(`/tests/${id}`);
+    return response.data!;
   }
 
   /**
@@ -62,10 +62,10 @@ class ApiClient {
    * Get test history
    */
   async getTestHistory(limit: number = 20): Promise<TestRun[]> {
-    const response = await this.request<{ testRuns: TestRun[]; total: number }>(
+    const response = await this.request<TestRun[]>(
       `/tests?limit=${limit}`
     );
-    return response.data!.testRuns;
+    return response.data || [];
   }
 
   /**

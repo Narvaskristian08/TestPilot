@@ -101,7 +101,7 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                         src={artifact.url}
                         alt="Test screenshot"
                         className="w-full cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => setLightboxImage(artifact.url)}
+                        onClick={() => setLightboxImage(artifact.url || null)}
                       />
                       <div className="bg-gray-50 px-3 py-2 text-xs text-gray-600">
                         Screenshot • {((artifact.file_size || 0) / 1024).toFixed(0)} KB

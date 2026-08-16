@@ -37,6 +37,7 @@ export interface TestArtifact {
   file_path: string;
   file_size?: number;
   created_at: string;
+  url?: string; // Added by API when serving artifacts
 }
 
 export interface ApiResponse<T> {

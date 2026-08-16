@@ -262,7 +262,7 @@ export class PlaywrightWorker {
         error_category: networkErrors.length > 0 ? ERROR_CATEGORY.NETWORK_ERROR : undefined,
         expected_behavior: networkErrors.length > 0 ? 'All HTTP requests should return 2xx or 3xx status codes' : undefined,
         actual_behavior: networkErrors.length > 0 ? `${networkErrors.length} requests failed: ${firstNetworkError}` : undefined,
-        url: page.url(),
+        url: this.page.url(),
         details: {
           errorCount: networkErrors.length,
           errors: networkErrors.slice(0, 20),
