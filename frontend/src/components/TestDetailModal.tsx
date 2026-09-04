@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { TestResult } from '../types';
 import { StatusBadge } from './StatusBadge';
+import {
+  CheckCircleIcon,
+  CircleStackIcon,
+  ExclamationTriangleIcon,
+  KeyIcon,
+  LightBulbIcon,
+  ShieldCheckIcon,
+  XCircleIcon,
+} from '@heroicons/react/24/outline';
 
 interface TestDetailModalProps {
   result: TestResult;
@@ -312,7 +321,14 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                                     vp.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                                   }`}>
                                     <p className="font-medium">{vp.viewport} ({vp.width}×{vp.height})</p>
-                                    <p className="mt-1">Horizontal Scroll: {vp.hasHorizontalScroll ? '❌ Yes' : '✓ No'}</p>
+                                    <p className="mt-1 inline-flex items-center gap-1">
+                                      Horizontal Scroll:
+                                      {vp.hasHorizontalScroll ? (
+                                        <><XCircleIcon aria-hidden="true" className="h-4 w-4 text-danger-500" /> Yes</>
+                                      ) : (
+                                        <><CheckCircleIcon aria-hidden="true" className="h-4 w-4 text-success-500" /> No</>
+                                      )}
+                                    </p>
                                   </div>
                                 ))}
                               </div>
@@ -326,7 +342,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                           <div className="space-y-3">
                             {details.envVariablesExposed && details.envVariablesExposed.length > 0 && (
                               <div className="bg-red-50 border border-red-300 rounded-lg p-3">
-                                <p className="font-semibold text-red-900 text-sm mb-2">🚨 Environment Variables Exposed</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-red-900 text-sm mb-2">
+                                  <ExclamationTriangleIcon aria-hidden="true" className="h-4 w-4" />
+                                  Environment Variables Exposed
+                                </p>
                                 {details.envVariablesExposed.map((envVar: string, i: number) => (
                                   <div key={i} className="text-xs bg-red-100 p-2 rounded mt-1 font-mono text-red-800">
                                     {envVar}
@@ -337,7 +356,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.exposedKeys && details.exposedKeys.length > 0 && (
                               <div className="bg-red-50 border border-red-300 rounded-lg p-3">
-                                <p className="font-semibold text-red-900 text-sm mb-2">🔑 API Keys / Secrets Detected</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-red-900 text-sm mb-2">
+                                  <KeyIcon aria-hidden="true" className="h-4 w-4" />
+                                  API Keys / Secrets Detected
+                                </p>
                                 {details.exposedKeys.map((key: any, i: number) => (
                                   <div key={i} className="text-xs bg-red-100 p-2 rounded mt-1">
                                     <p className="font-semibold text-red-800">{key.type}</p>
@@ -349,7 +371,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.owaspFindings && details.owaspFindings.length > 0 && (
                               <div className="bg-noir-secondary border border-noir-border rounded-md p-3">
-                                <p className="font-semibold text-noir-text-primary text-sm mb-2">🛡️ OWASP Top 10 Findings</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-noir-text-primary text-sm mb-2">
+                                  <ShieldCheckIcon aria-hidden="true" className="h-4 w-4" />
+                                  OWASP Top 10 Findings
+                                </p>
                                 <div className="space-y-2">
                                   {details.owaspFindings.map((finding: any, i: number) => (
                                     <div key={i} className={`text-xs p-2 rounded border ${
@@ -374,7 +399,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.sensitiveConsoleMessages && details.sensitiveConsoleMessages.length > 0 && (
                               <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
-                                <p className="font-semibold text-yellow-900 text-sm mb-2">⚠️ Sensitive Console Messages</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-yellow-900 text-sm mb-2">
+                                  <ExclamationTriangleIcon aria-hidden="true" className="h-4 w-4" />
+                                  Sensitive Console Messages
+                                </p>
                                 {details.sensitiveConsoleMessages.map((msg: string, i: number) => (
                                   <div key={i} className="text-xs bg-yellow-100 p-2 rounded mt-1 font-mono text-yellow-800">
                                     {msg}
@@ -385,7 +413,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.storageExposure && details.storageExposure.length > 0 && (
                               <div className="bg-orange-50 border border-orange-300 rounded-lg p-3">
-                                <p className="font-semibold text-orange-900 text-sm mb-2">💾 Sensitive Data in Storage</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-orange-900 text-sm mb-2">
+                                  <CircleStackIcon aria-hidden="true" className="h-4 w-4" />
+                                  Sensitive Data in Storage
+                                </p>
                                 {details.storageExposure.map((key: string, i: number) => (
                                   <div key={i} className="text-xs bg-orange-100 p-2 rounded mt-1 font-mono text-orange-800">
                                     {key}
@@ -396,14 +427,23 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.securityHeaders && (
                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <p className="font-semibold text-blue-900 text-sm mb-2">🛡️ Security Headers</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-blue-900 text-sm mb-2">
+                                  <ShieldCheckIcon aria-hidden="true" className="h-4 w-4" />
+                                  Security Headers
+                                </p>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
                                   {Object.entries(details.securityHeaders).map(([header, value]: [string, any]) => (
                                     <div key={header} className={`p-2 rounded ${
                                       value === 'Missing' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                                     }`}>
                                       <p className="font-medium">{header}</p>
-                                      <p className="font-mono">{value === 'Missing' ? '❌ Missing' : '✓ Present'}</p>
+                                      <p className="inline-flex items-center gap-1 font-mono">
+                                        {value === 'Missing' ? (
+                                          <><XCircleIcon aria-hidden="true" className="h-4 w-4" /> Missing</>
+                                        ) : (
+                                          <><CheckCircleIcon aria-hidden="true" className="h-4 w-4" /> Present</>
+                                        )}
+                                      </p>
                                     </div>
                                   ))}
                                 </div>
@@ -412,7 +452,10 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.recommendations && details.recommendations.length > 0 && (
                               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                <p className="font-semibold text-gray-900 text-sm mb-2">💡 Recommendations</p>
+                                <p className="flex items-center gap-1.5 font-semibold text-gray-900 text-sm mb-2">
+                                  <LightBulbIcon aria-hidden="true" className="h-4 w-4" />
+                                  Recommendations
+                                </p>
                                 <ul className="text-xs text-gray-700 space-y-1">
                                   {details.recommendations.map((rec: string, i: number) => (
                                     <li key={i}>• {rec}</li>
@@ -423,11 +466,17 @@ export const TestDetailModal: React.FC<TestDetailModalProps> = ({ result, onClos
                             
                             {details.message && (
                               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                <p className="text-sm text-green-800">✓ {details.message}</p>
+                                <p className="inline-flex items-center gap-1 text-sm text-green-800">
+                                  <CheckCircleIcon aria-hidden="true" className="h-4 w-4" />
+                                  {details.message}
+                                </p>
                                 {details.checked && (
                                   <ul className="text-xs text-green-700 mt-2 space-y-1">
                                     {details.checked.map((check: string, i: number) => (
-                                      <li key={i}>✓ {check}</li>
+                                      <li key={i} className="flex items-start gap-1">
+                                        <CheckCircleIcon aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>{check}</span>
+                                      </li>
                                     ))}
                                   </ul>
                                 )}

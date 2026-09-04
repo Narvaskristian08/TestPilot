@@ -6,6 +6,7 @@ import { socketService } from '../services/socket';
 import { TestProgress } from '../components/TestProgress';
 import { TestResultsPanel } from '../components/TestResultsPanel';
 import { StatusBadge } from '../components/StatusBadge';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export const TestRunPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,9 +87,7 @@ export const TestRunPage: React.FC = () => {
           <div className="relative w-20 h-20 mx-auto mb-6">
             <div className="absolute inset-0 bg-running-500/20 rounded-full animate-ping opacity-75"></div>
             <div className="relative bg-running-500 rounded-full w-20 h-20 flex items-center justify-center">
-              <svg className="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
+              <ArrowPathIcon aria-hidden="true" className="h-10 w-10 animate-spin text-white" />
             </div>
           </div>
           <h3 className="text-2xl font-bold text-noir-text-primary mb-2">Loading test run...</h3>
@@ -186,7 +185,7 @@ export const TestRunPage: React.FC = () => {
         {/* No Results Yet */}
         {(!results || results.length === 0) && testRun.status === 'RUNNING' && (
           <div className="bg-noir-surface border border-noir-border rounded-lg p-12 text-center">
-            <div className="text-4xl mb-4">⏳</div>
+            <ArrowPathIcon aria-hidden="true" className="mx-auto mb-4 h-8 w-8 animate-spin text-running-500" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Tests in Progress
             </h3>
