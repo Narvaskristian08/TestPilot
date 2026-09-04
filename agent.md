@@ -7,8 +7,8 @@ TestPilot (also branded as NOIR QA Automation in the current UI) is a web QA pla
 The repository is a split application:
 
 - `frontend/`: React 18 + TypeScript + Vite + TailwindCSS + React Router.
-- `backend/`: Node.js + Express + TypeScript, SQLite persistence, Playwright workers, and Socket.IO.
-- `supabase/`: SQL/configuration used for optional authentication-related setup.
+- `backend/`: Node.js + Express + TypeScript, Supabase-backed persistence, Playwright workers, and Socket.IO. SQLite remains a local legacy dependency and is not the beta artifact store.
+- `supabase/`: version-controlled Postgres migrations and Storage configuration for the hosted beta.
 - `tests/` and `pages/`: Playwright regression tests and page objects for the application.
 
 The primary product surface is the NOIR dashboard in `frontend/src/pages/NoirDashboard.tsx`. Supporting dashboard pages, test-run detail views, auth pages, usage tracking, artifact views, and several mocked management pages already exist.
@@ -28,22 +28,23 @@ The local development targets documented by the project are:
 - NOIR dark dashboard with live stats, recent runs, failures, charts, quick actions, and a new-run modal.
 - Test-run detail page with live progress, result summaries, artifacts, cancel, and delete actions.
 - Routes/pages for test runs, suites, cases, schedules, environments, reports, artifacts, settings, profile, login, and registration.
-- Optional Supabase auth integration and backend-enforced guest/authenticated usage limits.
+- Supabase auth integration and backend-enforced guest/authenticated usage limits.
 - Frontend and backend production builds now pass after restoring the dashboard data wiring and async model calls.
 - NOIR Developer Console theme refactor applied across the public landing page, dashboard shell, management pages, auth/profile screens, test-run views, progress states, result cards, tables, modals, and usage surfaces.
 - Neutral palette is centralized in `frontend/tailwind.config.js` and `frontend/src/index.css`; status colors are reserved for passed, failed, warning, and running states.
+- Publication wiring now includes a Vercel SPA rewrite, a Render backend blueprint, environment-driven API/WebSocket URLs, aligned Socket.IO subscriptions, and private Supabase artifact storage configuration.
 
 ### Verified caveats
 
-- The working tree is intentionally dirty on the `main` branch with substantial pre-existing edits, new documentation, migrations, and generated artifacts. Do not reset, checkout, or delete unrelated work.
+- The working tree began with substantial pre-existing edits, new documentation, migrations, and generated artifacts. The release work is being prepared on the `codex/noir-theme-refactor` branch; do not reset, checkout, or delete unrelated work.
 - The repository documentation is ahead of the checked source in a few places. The baseline builds exposed TypeScript issues in legacy components, optional fields, progress event typing, the Supabase no-credentials path, and backend Promise handling. Those blockers are now fixed for the current source; treat passing builds and actual runtime behavior as the source of truth.
 - The current dashboard was previously mounted at `/`. The landing-page implementation moves it to `/dashboard`, keeps test-run detail routes intact, and makes `/` the public entry point.
-- Supabase is optional for local guest usage. The frontend must still load when Supabase environment variables are absent; authenticated actions should fail with a clear configuration message instead of crashing at import time.
+- The frontend can load without Supabase client variables, but the backend's current persistence layer requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` for guest runs, authenticated runs, and artifact storage.
 
 ## Development rules
 
 1. Preserve the existing frontend/backend split, package managers, lockfiles, API response shapes, and route behavior unless a requested product change requires a deliberate route update.
-2. Keep new UI code in `frontend/src` and use the existing React/TypeScript/Tailwind conventions. Prefer the installed Heroicons components and CSS layout/gradients over new image assets or hand-authored SVG illustrations.
+2. Keep new UI code in `frontend/src` and use the existing React/TypeScript/Tailwind conventions. Prefer the installed Heroicons components and shared CSS tokens over new image assets or hand-authored SVG illustrations.
 3. Keep `/` public and marketing-oriented. Dashboard navigation, test-run pages, auth redirects, and internal links must use `/dashboard` when they mean the NOIR dashboard.
 4. Preserve guest testing and authenticated testing flows. Do not move usage enforcement into the client or store secrets in frontend source.
 5. Keep target URL validation strict to `http:` and `https:`. Continue relying on backend SSRF protection for requests initiated by the test runner.
@@ -68,7 +69,7 @@ The local development targets documented by the project are:
 
 ### Phase 3 — Restore a green frontend baseline
 
-- Make optional Supabase configuration safe at import time.
+- Make missing frontend Supabase configuration safe at import time; fail backend startup clearly when production persistence or artifact storage credentials are missing.
 - Fix existing TypeScript mismatches around optional run/result fields, progress events, and status badge values.
 - Keep these fixes narrowly scoped to existing behavior; do not redesign the legacy dashboard.
 
@@ -87,11 +88,23 @@ The local development targets documented by the project are:
 - Restyle the public landing page to introduce the product before the dashboard while preserving the URL-to-dashboard handoff and all existing links/forms.
 - Validate the frontend build and verify that both `/` and `/dashboard?target=...` are served by the local app.
 
+### Phase 6 — Public beta publication readiness
+
+- Deploy the Vite frontend from `frontend/` to Vercel with SPA rewrites and production API, Socket.IO, and Supabase environment variables.
+- Run the Express/Socket.IO/Playwright backend as a single Render web service with Chromium installed and `/health` enabled.
+- Persist screenshots and traces in the private `test-artifacts` Supabase Storage bucket while retaining local temporary-file support for development.
+- Apply Supabase migrations and storage configuration through the GitHub workflow using repository secrets; never commit credentials.
+- Keep mock-backed management routes visible but clearly labeled and non-mutating for the public beta.
+- Verify guest limits, authenticated usage, CORS, WebSocket progress, artifact access, URL safety, cancellation, deletion, and redeploy persistence before merging to `main`.
+
 ## Definition of done
 
 - A visitor landing on `/` sees the TestPilot value proposition and can start or open the dashboard.
 - `/dashboard` renders the existing NOIR dashboard and can accept a URL forwarded from the landing page.
 - Internal links and auth redirects point to the dashboard rather than the landing page.
-- Supabase absence does not prevent the frontend from loading for guest use.
+- Missing frontend Supabase variables do not block the landing page; the backend beta flow requires its Supabase credentials.
 - The UI uses the NOIR Developer Console visual system consistently across public, authenticated, management, and test-result surfaces.
 - `frontend/npm run build` passes, or any remaining failure is documented with its exact source and reason.
+- The frontend can be deployed from `frontend/` to Vercel and the backend can be deployed from `backend/` to Render using the documented environment variables.
+- Supabase migrations and the private `test-artifacts` bucket are managed from version-controlled configuration.
+- A production smoke test confirms the complete URL → queued test → live progress → results/artifacts flow.

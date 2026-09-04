@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { PlusIcon, ClockIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 
 interface Schedule {
@@ -67,11 +68,13 @@ export function SchedulesPage() {
               <h1 className="text-3xl font-bold text-white">Schedules</h1>
               <p className="text-gray-400 mt-1">Automate test execution with cron schedules</p>
             </div>
-            <button className="flex items-center px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <PlusIcon className="w-5 h-5 mr-2" />
               New Schedule
             </button>
           </div>
+
+          <BetaNotice surface="Schedules" />
 
           {/* Schedules List */}
           <div className="space-y-4">
@@ -130,13 +133,14 @@ export function SchedulesPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <button
+                      disabled
                       onClick={() => toggleSchedule(schedule.id)}
-                      className={`p-2.5 rounded-lg border transition-all ${
+                      title="Available after beta"
+                      className={`p-2.5 rounded-lg border transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                         schedule.enabled
                           ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
                           : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
                       }`}
-                      title={schedule.enabled ? 'Pause schedule' : 'Enable schedule'}
                     >
                       {schedule.enabled ? (
                         <PauseIcon className="w-5 h-5" />
@@ -158,7 +162,7 @@ export function SchedulesPage() {
               <p className="text-gray-400 mb-6">
                 Create your first automated test schedule
               </p>
-              <button className="px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+              <button disabled title="Available after beta" className="px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
                 Create Schedule
               </button>
             </div>

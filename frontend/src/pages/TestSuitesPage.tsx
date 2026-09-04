@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { PlusIcon, FolderIcon, PlayIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface TestSuite {
@@ -57,11 +58,13 @@ export function TestSuitesPage() {
               <h1 className="text-3xl font-bold text-white">Test Suites</h1>
               <p className="text-gray-400 mt-1">Organize tests into logical groups</p>
             </div>
-            <button className="flex items-center px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <PlusIcon className="w-5 h-5 mr-2" />
               New Suite
             </button>
           </div>
+
+          <BetaNotice surface="Test suites" />
 
           {/* Suites Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -75,13 +78,13 @@ export function TestSuitesPage() {
                     <FolderIcon className="w-6 h-6 text-noir-text-secondary" />
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 hover:bg-noir-border rounded-lg text-gray-400 hover:text-white">
+                    <button disabled title="Available after beta" className="p-2 rounded-lg text-gray-400 disabled:cursor-not-allowed disabled:opacity-50">
                       <PlayIcon className="w-4 h-4" />
                     </button>
-                    <button className="p-2 hover:bg-noir-border rounded-lg text-gray-400 hover:text-white">
+                    <button disabled title="Available after beta" className="p-2 rounded-lg text-gray-400 disabled:cursor-not-allowed disabled:opacity-50">
                       <PencilIcon className="w-4 h-4" />
                     </button>
-                    <button className="p-2 hover:bg-noir-border rounded-lg text-red-400 hover:text-red-300">
+                    <button disabled title="Available after beta" className="p-2 rounded-lg text-red-400 disabled:cursor-not-allowed disabled:opacity-50">
                       <TrashIcon className="w-4 h-4" />
                     </button>
                   </div>

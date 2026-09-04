@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { ChartBarIcon, ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 interface Report {
@@ -63,11 +64,13 @@ export function ReportsPage() {
               <h1 className="text-3xl font-bold text-white">Reports</h1>
               <p className="text-gray-400 mt-1">View and download test reports</p>
             </div>
-            <button className="flex items-center px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <ChartBarIcon className="w-5 h-5 mr-2" />
               Generate Report
             </button>
           </div>
+
+          <BetaNotice surface="Reports" />
 
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -133,7 +136,7 @@ export function ReportsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 px-3 py-2 bg-noir-bg hover:bg-noir-border border border-noir-border rounded-lg text-gray-300 hover:text-white transition-all">
+                    <button disabled title="Available after beta" className="flex items-center gap-2 px-3 py-2 bg-noir-bg border border-noir-border rounded-lg text-gray-300 transition-all disabled:cursor-not-allowed disabled:opacity-50">
                       <ArrowDownTrayIcon className="w-4 h-4" />
                       <span className="text-sm">Download</span>
                     </button>
@@ -151,7 +154,7 @@ export function ReportsPage() {
               <p className="text-gray-400 mb-6">
                 Generate your first report to see analytics
               </p>
-              <button className="px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+              <button disabled title="Available after beta" className="px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
                 Generate Report
               </button>
             </div>

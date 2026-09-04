@@ -18,6 +18,8 @@ import { io } from '../server';
 export interface StartTestOptions {
   url: string;
   browser?: BrowserType;
+  userId?: string;
+  guestId?: string;
 }
 
 /**
@@ -25,13 +27,15 @@ export interface StartTestOptions {
  * Returns the newly created TestRun record.
  */
 export async function startTest(options: StartTestOptions) {
-  const { url, browser = 'chromium' } = options;
+  const { url, browser = 'chromium', userId, guestId } = options;
 
   // 1. Create a DB record in QUEUED state
-  const testRun = TestRunModel.create({
+  const testRun = await TestRunModel.create({
     url,
+    browser,
     status: TEST_STATUS.QUEUED,
-    project_id: null,
+    user_id: userId,
+    guest_id: guestId,
   });
 
   const runId = testRun.id!;
@@ -57,10 +61,10 @@ export async function startTest(options: StartTestOptions) {
 /**
  * Cancel a queued test run (cannot cancel a running one).
  */
-export function cancelTest(runId: number): boolean {
+export async function cancelTest(runId: number): Promise<boolean> {
   const cancelled = jobQueue.cancel(runId);
   if (cancelled) {
-    TestRunModel.updateStatus(runId, TEST_STATUS.CANCELLED);
+    await TestRunModel.updateStatus(runId, TEST_STATUS.CANCELLED);
     emitRunUpdate(runId, TEST_STATUS.CANCELLED);
   }
   return cancelled;
@@ -75,7 +79,7 @@ export function initTestRunner(): void {
     const { runId, url, browser } = job;
 
     // Mark as RUNNING
-    TestRunModel.updateStatus(runId, TEST_STATUS.RUNNING);
+    await TestRunModel.updateStatus(runId, TEST_STATUS.RUNNING);
     emitRunUpdate(runId, TEST_STATUS.RUNNING);
 
     const worker = new PlaywrightWorker(browser, (event) => {
@@ -91,13 +95,13 @@ export function initTestRunner(): void {
       await worker.executeTests(runId, url);
 
       // Mark as COMPLETED
-      TestRunModel.updateStatus(runId, TEST_STATUS.COMPLETED);
+      await TestRunModel.updateStatus(runId, TEST_STATUS.COMPLETED);
 
-      const updated = TestRunModel.findById(runId);
+      const updated = await TestRunModel.findById(runId);
       emitRunUpdate(runId, TEST_STATUS.COMPLETED, updated);
     } catch (error: any) {
       console.error('[TestRunner] Worker threw an unhandled error:', error);
-      TestRunModel.updateStatus(runId, TEST_STATUS.FAILED);
+      await TestRunModel.updateStatus(runId, TEST_STATUS.FAILED);
       emitRunUpdate(runId, TEST_STATUS.FAILED);
       throw error; // Let the queue mark the job as failed
     }

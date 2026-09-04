@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { TestRun } from '../types';
 import { socketService } from '../services/socket';
+import { apiClient } from '../services/api';
 import { StatusBadge } from './StatusBadge';
 
 interface TestProgressProps {
@@ -19,29 +20,29 @@ export const TestProgress: React.FC<TestProgressProps> = ({ testRun: initialTest
   }, [initialTestRun]);
 
   useEffect(() => {
-    if ((testRun.status === 'RUNNING' || testRun.status === 'QUEUED') && testRun.id) {
+    const testRunId = testRun.id;
+    if ((testRun.status === 'RUNNING' || testRun.status === 'QUEUED') && testRunId) {
       // Subscribe to WebSocket updates
-      const unsubscribe = socketService.subscribeToTest(testRun.id, (event) => {
+      const unsubscribe = socketService.subscribeToTest(testRunId, (event) => {
         setMessage(event.message || '');
+        const eventStatus = event.status.toLowerCase();
         
         // Handle per-test progress updates
         const testName = event.testName;
         const testType = event.testType;
         if (testName && testType) {
-          if (event.status === 'running') {
+          if (eventStatus === 'running') {
             setCurrentTest({ name: testName, type: testType, status: event.status });
-          } else if (event.status === 'completed' || event.status === 'passed' || event.status === 'failed' || event.status === 'warning') {
+          } else if (eventStatus === 'completed' || eventStatus === 'passed' || eventStatus === 'failed' || eventStatus === 'warning') {
             setCompletedTests(prev => [...prev, { name: testName, type: testType, status: event.status }]);
             setCurrentTest(null);
           }
         }
         
         // Fetch updated test run data on completion
-        if (event.status === 'COMPLETED' || event.status === 'FAILED') {
-          fetch(`/api/tests/${testRun.id}`)
-            .then(res => res.json())
-            .then(data => {
-              const updated = data.data;
+        if (eventStatus === 'completed' || eventStatus === 'failed') {
+          apiClient.getTestRun(testRunId)
+            .then(updated => {
               setTestRun(updated);
               onUpdate?.(updated);
             })
@@ -52,9 +53,7 @@ export const TestProgress: React.FC<TestProgressProps> = ({ testRun: initialTest
       // Also poll for updates every 2 seconds
       const pollInterval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/tests/${testRun.id}`);
-          const data = await res.json();
-          const updated = data.data;
+          const updated = await apiClient.getTestRun(testRunId);
           setTestRun(updated);
           
           // Stop polling if test is complete

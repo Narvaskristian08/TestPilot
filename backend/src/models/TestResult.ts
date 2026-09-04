@@ -1,8 +1,8 @@
-import db from '../config/database';
+import { db } from '../config/database';
 import { TEST_RESULT_STATUS, TEST_TYPES } from '../config/constants';
 
 export interface TestResult {
-  id?: number;
+  id: number;
   run_id: number;
   test_name: string;
   test_type: keyof typeof TEST_TYPES;
@@ -12,25 +12,14 @@ export interface TestResult {
   expected_behavior?: string | null;
   actual_behavior?: string | null;
   url?: string | null;
-  details?: string | null; // JSON string
+  details?: any | null;
   duration_ms?: number | null;
   created_at?: string;
 }
 
 export class TestResultModel {
-  static create(result: Omit<TestResult, 'id' | 'created_at'>): TestResult {
-    const stmt = db.prepare(`
-      INSERT INTO test_results (
-        run_id, test_name, test_type, status, error_message, error_category,
-        expected_behavior, actual_behavior, url, details, duration_ms
-      )
-      VALUES (
-        @run_id, @test_name, @test_type, @status, @error_message, @error_category,
-        @expected_behavior, @actual_behavior, @url, @details, @duration_ms
-      )
-    `);
-
-    const info = stmt.run({
+  static async create(result: Omit<TestResult, 'id' | 'created_at'>): Promise<TestResult> {
+    return await db.createTestResult({
       run_id: result.run_id,
       test_name: result.test_name,
       test_type: result.test_type,
@@ -43,62 +32,49 @@ export class TestResultModel {
       details: result.details || null,
       duration_ms: result.duration_ms || null,
     });
-
-    return this.findById(info.lastInsertRowid as number)!;
   }
 
-  static findById(id: number): TestResult | undefined {
-    const stmt = db.prepare('SELECT * FROM test_results WHERE id = ?');
-    return stmt.get(id) as TestResult | undefined;
+  static async findById(id: number): Promise<TestResult | null> {
+    const { data, error } = await db.supabaseDb
+      .from('test_results')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) return null;
+    return data as TestResult;
   }
 
-  static findByRunId(runId: number): TestResult[] {
-    const stmt = db.prepare('SELECT * FROM test_results WHERE run_id = ? ORDER BY created_at ASC');
-    return stmt.all(runId) as TestResult[];
+  static async findByRunId(runId: number): Promise<TestResult[]> {
+    return await db.getTestResults(runId);
   }
 
-  static createMany(results: Omit<TestResult, 'id' | 'created_at'>[]): void {
-    const stmt = db.prepare(`
-      INSERT INTO test_results (
-        run_id, test_name, test_type, status, error_message, error_category,
-        expected_behavior, actual_behavior, url, details, duration_ms
-      )
-      VALUES (
-        @run_id, @test_name, @test_type, @status, @error_message, @error_category,
-        @expected_behavior, @actual_behavior, @url, @details, @duration_ms
-      )
-    `);
+  static async createMany(results: Omit<TestResult, 'id' | 'created_at'>[]): Promise<void> {
+    const { error } = await db.supabaseDb
+      .from('test_results')
+      .insert(results);
 
-    const insertMany = db.transaction((results: Omit<TestResult, 'id' | 'created_at'>[]) => {
-      for (const result of results) {
-        stmt.run({
-          run_id: result.run_id,
-          test_name: result.test_name,
-          test_type: result.test_type,
-          status: result.status,
-          error_message: result.error_message || null,
-          error_category: result.error_category || null,
-          expected_behavior: result.expected_behavior || null,
-          actual_behavior: result.actual_behavior || null,
-          url: result.url || null,
-          details: result.details || null,
-          duration_ms: result.duration_ms || null,
-        });
-      }
-    });
-
-    insertMany(results);
+    if (error) {
+      console.error('Error creating test results:', error);
+      throw error;
+    }
   }
 
-  static delete(id: number): boolean {
-    const stmt = db.prepare('DELETE FROM test_results WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
+  static async delete(id: number): Promise<boolean> {
+    const { error } = await db.supabaseDb
+      .from('test_results')
+      .delete()
+      .eq('id', id);
+
+    return !error;
   }
 
-  static deleteByRunId(runId: number): boolean {
-    const stmt = db.prepare('DELETE FROM test_results WHERE run_id = ?');
-    const result = stmt.run(runId);
-    return result.changes > 0;
+  static async deleteByRunId(runId: number): Promise<boolean> {
+    const { error } = await db.supabaseDb
+      .from('test_results')
+      .delete()
+      .eq('run_id', runId);
+
+    return !error;
   }
 }

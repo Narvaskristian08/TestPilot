@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { config } from '../config';
+import { apiClient } from '../services/api';
 
 interface TestProgressEvent {
   testName: string;
   testType: string;
-  status: 'running' | 'completed' | 'failed';
+  status: string;
   message?: string;
   timestamp: string;
 }
@@ -27,8 +28,12 @@ export function useTestProgress(runId: number | null) {
     if (!runId) return;
 
     // Connect to WebSocket
-    const newSocket = io(config.apiUrl, {
+    const newSocket = io(config.socketUrl, {
       transports: ['websocket', 'polling'],
+      auth: {
+        token: apiClient.getAuthToken(),
+        guestFingerprint: apiClient.getGuestFingerprint(),
+      },
     });
 
     newSocket.on('connect', () => {
@@ -36,7 +41,7 @@ export function useTestProgress(runId: number | null) {
       setIsConnected(true);
       
       // Join the test room
-      newSocket.emit('join', `test-${runId}`);
+      newSocket.emit('subscribe', String(runId));
     });
 
     newSocket.on('disconnect', () => {
@@ -59,7 +64,7 @@ export function useTestProgress(runId: number | null) {
     setSocket(newSocket);
 
     return () => {
-      newSocket.emit('leave', `test-${runId}`);
+      newSocket.emit('unsubscribe', String(runId));
       newSocket.close();
     };
   }, [runId]);

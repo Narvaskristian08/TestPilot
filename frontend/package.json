@@ -2,6 +2,7 @@
   "name": "testpilot-frontend",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@heroicons/react": "^2.1.0",
     "@supabase/supabase-js": "^2.112.3",

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, hasSupabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
+import { socketService } from '../services/socket';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +20,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.setAuthToken(session?.access_token ?? null);
+    socketService.refreshIdentity();
+  }, [session]);
 
   useEffect(() => {
     if (!hasSupabase()) {

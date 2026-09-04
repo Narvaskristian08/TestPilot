@@ -1,55 +1,61 @@
-import db from '../config/database';
+import { db } from '../config/database';
 import { ARTIFACT_TYPES } from '../config/constants';
 
 export interface TestArtifact {
-  id?: number;
+  id: number;
   result_id: number;
+  run_id: number;
   artifact_type: keyof typeof ARTIFACT_TYPES;
   file_path: string;
   file_size?: number | null;
+  mime_type?: string | null;
   created_at?: string;
 }
 
 export class TestArtifactModel {
-  static create(artifact: Omit<TestArtifact, 'id' | 'created_at'>): TestArtifact {
-    const stmt = db.prepare(`
-      INSERT INTO test_artifacts (result_id, artifact_type, file_path, file_size)
-      VALUES (@result_id, @artifact_type, @file_path, @file_size)
-    `);
-
-    const info = stmt.run({
+  static async create(artifact: Omit<TestArtifact, 'id' | 'created_at'>): Promise<TestArtifact> {
+    return await db.createTestArtifact({
       result_id: artifact.result_id,
+      run_id: artifact.run_id,
       artifact_type: artifact.artifact_type,
       file_path: artifact.file_path,
       file_size: artifact.file_size || null,
+      mime_type: artifact.mime_type || null,
     });
-
-    return this.findById(info.lastInsertRowid as number)!;
   }
 
-  static findById(id: number): TestArtifact | undefined {
-    const stmt = db.prepare('SELECT * FROM test_artifacts WHERE id = ?');
-    return stmt.get(id) as TestArtifact | undefined;
+  static async findById(id: number): Promise<TestArtifact | null> {
+    const { data, error } = await db.supabaseDb
+      .from('test_artifacts')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) return null;
+    return data as TestArtifact;
   }
 
-  static findByResultId(resultId: number): TestArtifact[] {
-    const stmt = db.prepare('SELECT * FROM test_artifacts WHERE result_id = ? ORDER BY created_at ASC');
-    return stmt.all(resultId) as TestArtifact[];
+  static async findByResultId(resultId: number): Promise<TestArtifact[]> {
+    const { data, error } = await db.supabaseDb
+      .from('test_artifacts')
+      .select('*')
+      .eq('result_id', resultId)
+      .order('created_at', { ascending: true });
+
+    if (error) return [];
+    return data as TestArtifact[];
   }
 
-  static findByRunId(runId: number): TestArtifact[] {
-    const stmt = db.prepare(`
-      SELECT a.* FROM test_artifacts a
-      INNER JOIN test_results r ON a.result_id = r.id
-      WHERE r.run_id = ?
-      ORDER BY a.created_at ASC
-    `);
-    return stmt.all(runId) as TestArtifact[];
+  static async findByRunId(runId: number): Promise<TestArtifact[]> {
+    return await db.getTestArtifacts(runId);
   }
 
-  static delete(id: number): boolean {
-    const stmt = db.prepare('DELETE FROM test_artifacts WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
+  static async delete(id: number): Promise<boolean> {
+    const { error } = await db.supabaseDb
+      .from('test_artifacts')
+      .delete()
+      .eq('id', id);
+
+    return !error;
   }
 }

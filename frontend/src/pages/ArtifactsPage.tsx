@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { PhotoIcon, DocumentIcon, VideoCameraIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 interface Artifact {
@@ -105,6 +106,8 @@ export function ArtifactsPage() {
             </div>
           </div>
 
+          <BetaNotice surface="Artifact browsing" />
+
           {/* Type Filter Tabs */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -194,7 +197,7 @@ export function ArtifactsPage() {
                   </div>
                 </div>
 
-                <button className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-noir-bg hover:bg-noir-border border border-noir-border rounded-lg text-gray-300 hover:text-white transition-all text-sm">
+                <button disabled title="Available after beta" className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-noir-bg border border-noir-border rounded-lg text-gray-300 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50">
                   <ArrowDownTrayIcon className="w-4 h-4" />
                   Download
                 </button>

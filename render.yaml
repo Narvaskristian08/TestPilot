@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: testpilot-backend
+    runtime: node
+    rootDir: backend
+    plan: starter
+    buildCommand: npm ci && npx playwright install --with-deps chromium && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ARTIFACTS_PATH
+        value: /tmp/testpilot-artifacts
+      - key: SUPABASE_ARTIFACT_BUCKET
+        value: test-artifacts
+      - key: SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS
+        value: 3600
+      - key: GUEST_QA_LIMIT
+        value: 3
+      - key: DAILY_QA_LIMIT
+        value: 20
+      - key: QA_MAX_CONCURRENT_TESTS
+        value: 1
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

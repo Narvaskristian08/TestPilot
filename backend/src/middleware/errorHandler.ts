@@ -3,11 +3,15 @@ import { Request, Response, NextFunction } from 'express';
 export class AppError extends Error {
   statusCode: number;
   isOperational: boolean;
+  errorCode?: string;
+  metadata?: any;
 
-  constructor(message: string, statusCode: number) {
+  constructor(message: string, statusCode: number, errorCode?: string, metadata?: any) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = true;
+    this.errorCode = errorCode;
+    this.metadata = metadata;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -19,10 +23,20 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
+    const response: any = {
       status: 'error',
       message: err.message,
-    });
+    };
+
+    if (err.errorCode) {
+      response.error = err.errorCode;
+    }
+
+    if (err.metadata) {
+      response.data = err.metadata;
+    }
+
+    return res.status(err.statusCode).json(response);
   }
 
   // Unexpected errors

@@ -28,17 +28,17 @@ TestPilot is a web-based automated QA testing platform that allows users to test
 - ⚡ **Real-Time Results** - Live progress updates via WebSocket
 - 📊 **Beautiful Dashboard** - Modern, intuitive UI built with React + TailwindCSS
 - 📱 **Responsive Testing** - Automatic testing across Desktop, Tablet, and Mobile viewports
-- 🔍 **9 Automated Tests** - Availability, links, forms, buttons, responsive design, console errors, network errors, accessibility, and screenshots
+- 🔍 **10 Automated Tests** - Availability, links, forms, buttons, responsive design, console errors, network errors, accessibility, security, and screenshots
 - 📸 **Screenshot Capture** - Visual evidence of page state
 - 📜 **Test History** - View and manage past test runs
 
 ### For Developers
 - 🔒 **SSRF Protection** - Built-in security to prevent testing private networks
 - 🚦 **Rate Limiting** - Protect against abuse
-- 💾 **SQLite Database** - Simple, file-based storage for test runs and results
+- 💾 **Supabase Postgres** - Hosted persistence for test runs, results, usage, and auth profiles
 - 🔌 **WebSocket Updates** - Real-time test status via Socket.IO
 - 🎯 **RESTful API** - Clean API for test management
-- 🐳 **Easy Deployment** - Single backend + frontend deployment
+- 🚢 **Hosted Deployment** - Vercel frontend, Render worker/API, and Supabase services
 - 🧪 **Playwright Engine** - Industry-standard browser automation
 
 ## 🏗️ Architecture
@@ -52,7 +52,7 @@ TestPilot is a web-based automated QA testing platform that allows users to test
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Express Backend API                        │
-│         (REST + Socket.IO + SQLite)                     │
+│         (REST + Socket.IO + Supabase)                   │
 │  • URL Validation & SSRF Protection                     │
 │  • Job Queue Management                                 │
 │  • Test Orchestration                                   │
@@ -104,9 +104,9 @@ npm run install:all
 npx playwright install chromium
 ```
 
-### 4. Configure Backend Environment (Optional)
+### 4. Configure Backend Environment
 
-The backend will work with default settings. To customize:
+The backend needs Supabase credentials for the working test flow. To configure it locally:
 
 ```bash
 cd backend
@@ -117,8 +117,9 @@ cp .env.example .env
 Default configuration:
 - Backend Port: `3001`
 - Frontend Port: `5173`
-- Database: SQLite (auto-created in `backend/storage/`)
-- Max concurrent tests: `3`
+- Database: Supabase Postgres
+- Artifact bucket: private `test-artifacts` Storage bucket
+- Max concurrent tests: `1`
 
 ## 🎮 Running TestPilot
 
@@ -161,7 +162,7 @@ npm start
 
 ### 1. Open the Dashboard
 
-Navigate to `http://localhost:5173` in your browser.
+Navigate to `http://localhost:5173/` in your browser, then choose **Open dashboard** or start with a target URL.
 
 ### 2. Enter a Website URL
 
@@ -727,7 +728,7 @@ testpilot/
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── constants.ts      # Configuration constants
-│   │   │   └── database.ts       # SQLite initialization
+│   │   │   └── database.ts       # Supabase database client
 │   │   ├── middleware/
 │   │   │   ├── errorHandler.ts   # Error handling
 │   │   │   ├── rateLimiter.ts    # Rate limiting
@@ -755,7 +756,7 @@ testpilot/
 │   │   │       ├── discovery.ts   # Element discovery
 │   │   │       └── safety.ts      # Safety checks
 │   │   └── server.ts              # Express server
-│   ├── storage/                   # SQLite DB & artifacts
+│   ├── storage/                   # Temporary local artifacts only
 │   └── package.json
 │
 ├── frontend/                      # React + Vite + TailwindCSS
@@ -925,13 +926,16 @@ Vite provides instant hot-module replacement (HMR).
 
 ### Database Management
 
-The SQLite database is automatically created at `backend/storage/database.sqlite`.
+Production and beta data live in Supabase Postgres. Apply schema changes through the
+version-controlled migration workflow:
 
-**Reinitialize database**:
 ```bash
-rm backend/storage/database.sqlite
-# Database will be recreated on next server start
+supabase migration list --linked
+supabase db push --linked
 ```
+
+The local SQLite files under `backend/storage/` are legacy development artifacts and
+must not be committed or used as the beta persistence layer.
 
 ### Adding New Tests
 
@@ -1024,12 +1028,18 @@ npx playwright install chromium
 PORT=3001
 NODE_ENV=development
 
-# Database
-DATABASE_PATH=./storage/database.sqlite
-ARTIFACTS_PATH=./storage/artifacts
+# Persistence and temporary local artifact staging
+ARTIFACTS_PATH=/tmp/testpilot-artifacts
+
+# Supabase (required by the backend test flow)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...your_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...your_service_role_key_here
+SUPABASE_ARTIFACT_BUCKET=test-artifacts
+SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS=3600
 
 # Test Limits
-MAX_CONCURRENT_TESTS=3
+QA_MAX_CONCURRENT_TESTS=1
 MAX_TEST_DURATION_MS=300000
 MAX_PAGES_TO_CRAWL=50
 
@@ -1045,7 +1055,47 @@ CORS_ORIGIN=http://localhost:5173
 
 ## 🚢 Deployment
 
-### Option 1: Single Server Deployment
+### Hosted Public Beta (Vercel + Render + Supabase)
+
+The recommended hosted layout keeps the Vite frontend separate from the long-running Playwright backend:
+
+```
+Vercel (frontend) ──HTTP/WebSocket──> Render (Express + Playwright)
+                                         │
+                                         ├── Supabase Auth + Postgres
+                                         └── Supabase Storage (private artifacts)
+```
+
+#### Vercel frontend
+
+Create a Vercel project connected to this repository with the root directory set to `frontend`.
+
+- Build command: `npm run build`
+- Output directory: `dist`
+- `VITE_API_URL`: public Render backend URL
+- `VITE_SOCKET_URL`: public Render backend URL
+- `VITE_SUPABASE_URL`: production Supabase URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase publishable/anon key
+
+`frontend/vercel.json` contains the SPA rewrite required for direct navigation to React Router routes.
+
+#### Render backend
+
+Use the repository `render.yaml` blueprint for the backend web service. It installs Chromium, builds the TypeScript service, exposes `/health`, and keeps the beta at one instance because the current queue is in memory.
+
+Set the values marked `sync: false` in Render’s environment settings. Keep `SUPABASE_SERVICE_ROLE_KEY` backend-only and set `ARTIFACTS_PATH` to temporary storage; screenshots and traces are uploaded to the private Supabase Storage bucket `test-artifacts`.
+
+#### Supabase
+
+The Supabase project should be linked to the repository and deployed through the migration workflow. Configure the production Auth site URL and redirect URLs to the Vercel domain. The `test-artifacts` bucket is private and declared in `supabase/config.toml`.
+
+The GitHub workflow requires these repository secrets:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
+
+### Option 1: Single Server Deployment (local or self-managed)
 
 ```bash
 # Build everything
@@ -1095,7 +1145,7 @@ ISC License
 - **TailwindCSS** - Utility-first CSS framework
 - **Express** - Backend framework
 - **Socket.IO** - Real-time communication
-- **better-sqlite3** - SQLite database driver
+- **Supabase** - Postgres, Auth, and private artifact Storage
 - **axe-core** - Accessibility testing engine
 
 ---

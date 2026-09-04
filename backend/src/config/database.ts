@@ -1,140 +1,394 @@
-import Database from 'better-sqlite3';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG } from './constants';
-import fs from 'fs';
-import path from 'path';
 
-// Ensure storage directories exist
-const storageDir = path.dirname(CONFIG.DATABASE_PATH);
-if (!fs.existsSync(storageDir)) {
-  fs.mkdirSync(storageDir, { recursive: true });
+// Check if Supabase is configured
+const isConfigured = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+
+if (!isConfigured) {
+  console.warn('');
+  console.warn('╔════════════════════════════════════════════════════════════╗');
+  console.warn('║  ⚠️  SUPABASE NOT CONFIGURED                               ║');
+  console.warn('╚════════════════════════════════════════════════════════════╝');
+  console.warn('');
+  console.warn('Database features are DISABLED.');
+  console.warn('');
+  console.warn('To enable database:');
+  console.warn('1. Create a Supabase project at https://supabase.com');
+  console.warn('2. Copy your credentials from Settings → API');
+  console.warn('3. Add to backend/.env:');
+  console.warn('   SUPABASE_URL=https://xxxxx.supabase.co');
+  console.warn('   SUPABASE_ANON_KEY=eyJhbGc...');
+  console.warn('   SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...');
+  console.warn('');
 }
 
-if (!fs.existsSync(CONFIG.ARTIFACTS_PATH)) {
-  fs.mkdirSync(CONFIG.ARTIFACTS_PATH, { recursive: true });
-}
-
-// Initialize database connection
-export const db = new Database(CONFIG.DATABASE_PATH);
-
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
-
-// Initialize database schema
-export function initDatabase() {
-  console.log('Initializing database schema...');
-
-  // Create users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Create test_projects table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS test_projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      name TEXT,
-      base_url TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `);
-
-  // Create test_runs table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS test_runs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER,
-      url TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'QUEUED',
-      started_at DATETIME,
-      completed_at DATETIME,
-      duration_ms INTEGER,
-      total_tests INTEGER DEFAULT 0,
-      passed_tests INTEGER DEFAULT 0,
-      failed_tests INTEGER DEFAULT 0,
-      warning_tests INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (project_id) REFERENCES test_projects(id)
-    )
-  `);
-
-  // Create test_results table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS test_results (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id INTEGER NOT NULL,
-      test_name TEXT NOT NULL,
-      test_type TEXT NOT NULL,
-      status TEXT NOT NULL,
-      error_message TEXT,
-      error_category TEXT,
-      expected_behavior TEXT,
-      actual_behavior TEXT,
-      url TEXT,
-      details TEXT,
-      duration_ms INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (run_id) REFERENCES test_runs(id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create test_artifacts table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS test_artifacts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      result_id INTEGER NOT NULL,
-      artifact_type TEXT NOT NULL,
-      file_path TEXT NOT NULL,
-      file_size INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (result_id) REFERENCES test_results(id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create indexes for better query performance
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_test_runs_status ON test_runs(status);
-    CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_test_results_run_id ON test_results(run_id);
-    CREATE INDEX IF NOT EXISTS idx_test_artifacts_result_id ON test_artifacts(result_id);
-  `);
-
-  // Run migrations for existing databases
-  runMigrations();
-
-  console.log('Database schema initialized successfully');
-}
-
-/**
- * Run database migrations to add new columns to existing tables
- */
-function runMigrations() {
-  // Check if error_category column exists
-  const columns = db.pragma("table_info(test_results)") as Array<{ name: string }>;
-  const hasErrorCategory = columns.some(col => col.name === 'error_category');
-  
-  if (!hasErrorCategory) {
-    console.log('Running migration: Adding new columns to test_results table...');
-    try {
-      db.exec(`
-        ALTER TABLE test_results ADD COLUMN error_category TEXT;
-        ALTER TABLE test_results ADD COLUMN expected_behavior TEXT;
-        ALTER TABLE test_results ADD COLUMN actual_behavior TEXT;
-        ALTER TABLE test_results ADD COLUMN url TEXT;
-      `);
-      console.log('Migration completed successfully');
-    } catch (error) {
-      console.log('Migration skipped or already applied');
+// Create a dummy client that provides helpful error messages
+const createDummyClient = (): SupabaseClient => {
+  const handler = {
+    get: (target: any, prop: string) => {
+      throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env');
     }
-  }
-}
+  };
+  return new Proxy({} as SupabaseClient, handler);
+};
 
-// Initialize on import
-initDatabase();
+// Admin client for database operations (uses service role key)
+export const supabaseDb = isConfigured && CONFIG.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : createDummyClient();
 
-export default db;
+export default supabaseDb;
+
+// Export helper to check if Supabase is available
+export const isSupabaseConfigured = () => isConfigured;
+
+// Database helper functions
+export const db = {
+  // Expose the configured client to the model layer.
+  supabaseDb,
+
+  // Users
+  async createUser(data: { supabase_user_id: string; email: string; display_name?: string }) {
+    const { data: user, error } = await supabaseDb
+      .from('users')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return user;
+  },
+
+  async getUserBySupabaseId(supabase_user_id: string) {
+    const { data: user, error } = await supabaseDb
+      .from('users')
+      .select('*')
+      .eq('supabase_user_id', supabase_user_id)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return user;
+  },
+
+  async getUserByEmail(email: string) {
+    const { data: user, error } = await supabaseDb
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return user;
+  },
+
+  // Test Runs
+  async createTestRun(data: any) {
+    const { data: run, error } = await supabaseDb
+      .from('test_runs')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return run;
+  },
+
+  async getTestRun(id: number) {
+    const { data: run, error } = await supabaseDb
+      .from('test_runs')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return run;
+  },
+
+  async updateTestRun(id: number, data: any) {
+    const { data: run, error } = await supabaseDb
+      .from('test_runs')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return run;
+  },
+
+  async getTestRuns(filters?: { user_id?: string; guest_id?: string; limit?: number; offset?: number }) {
+    let query = supabaseDb
+      .from('test_runs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filters?.user_id) {
+      query = query.eq('user_id', filters.user_id);
+    }
+    if (filters?.guest_id) {
+      query = query.eq('guest_id', filters.guest_id);
+    }
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    if (filters?.offset) {
+      const limit = filters.limit || 50;
+      query = query.range(filters.offset, filters.offset + limit - 1);
+    }
+
+    const { data: runs, error } = await query;
+    if (error) throw error;
+    return runs;
+  },
+
+  // Test Results
+  async createTestResult(data: any) {
+    const { data: result, error } = await supabaseDb
+      .from('test_results')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return result;
+  },
+
+  async getTestResults(runId: number) {
+    const { data: results, error } = await supabaseDb
+      .from('test_results')
+      .select('*')
+      .eq('run_id', runId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return results;
+  },
+
+  // Test Artifacts
+  async createTestArtifact(data: any) {
+    const { data: artifact, error } = await supabaseDb
+      .from('test_artifacts')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return artifact;
+  },
+
+  async getTestArtifacts(runId: number) {
+    const { data: artifacts, error } = await supabaseDb
+      .from('test_artifacts')
+      .select('*')
+      .eq('run_id', runId);
+    if (error) throw error;
+    return artifacts;
+  },
+
+  // Daily Usage
+  async getDailyUsage(userId: string, date: string) {
+    const { data: usage, error } = await supabaseDb
+      .from('daily_usage')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('usage_date', date)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return usage;
+  },
+
+  async incrementDailyUsage(userId: string, date: string) {
+    const existing = await this.getDailyUsage(userId, date);
+
+    if (existing) {
+      const { data: usage, error } = await supabaseDb
+        .from('daily_usage')
+        .update({ test_count: existing.test_count + 1 })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return usage;
+    } else {
+      const { data: usage, error } = await supabaseDb
+        .from('daily_usage')
+        .insert({ user_id: userId, usage_date: date, test_count: 1 })
+        .select()
+        .single();
+      if (error) throw error;
+      return usage;
+    }
+  },
+
+  // Guest Usage
+  async getGuestUsage(guestIdentifier: string) {
+    const { data: usage, error } = await supabaseDb
+      .from('guest_usage')
+      .select('*')
+      .eq('guest_identifier', guestIdentifier)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return usage;
+  },
+
+  async incrementGuestUsage(guestIdentifier: string, ipAddress: string, userAgent?: string) {
+    const existing = await this.getGuestUsage(guestIdentifier);
+
+    if (existing) {
+      const { data: usage, error } = await supabaseDb
+        .from('guest_usage')
+        .update({
+          test_count: existing.test_count + 1,
+          last_used_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return usage;
+    } else {
+      const { data: usage, error } = await supabaseDb
+        .from('guest_usage')
+        .insert({
+          guest_identifier: guestIdentifier,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          test_count: 1
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return usage;
+    }
+  },
+
+  // Test Suites
+  async createTestSuite(data: any) {
+    const { data: suite, error } = await supabaseDb
+      .from('test_suites')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return suite;
+  },
+
+  async getTestSuites(userId: string) {
+    const { data: suites, error } = await supabaseDb
+      .from('test_suites')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return suites;
+  },
+
+  async getTestSuite(id: number) {
+    const { data: suite, error } = await supabaseDb
+      .from('test_suites')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return suite;
+  },
+
+  async updateTestSuite(id: number, data: any) {
+    const { data: suite, error } = await supabaseDb
+      .from('test_suites')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return suite;
+  },
+
+  async deleteTestSuite(id: number) {
+    const { error } = await supabaseDb
+      .from('test_suites')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+
+  // Test Cases
+  async createTestCase(data: any) {
+    const { data: testCase, error } = await supabaseDb
+      .from('test_cases')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return testCase;
+  },
+
+  async getTestCases(suiteId: number) {
+    const { data: cases, error } = await supabaseDb
+      .from('test_cases')
+      .select('*')
+      .eq('suite_id', suiteId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return cases;
+  },
+
+  async updateTestCase(id: number, data: any) {
+    const { data: testCase, error } = await supabaseDb
+      .from('test_cases')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return testCase;
+  },
+
+  async deleteTestCase(id: number) {
+    const { error } = await supabaseDb
+      .from('test_cases')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+
+  // Schedules
+  async createSchedule(data: any) {
+    const { data: schedule, error } = await supabaseDb
+      .from('schedules')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw error;
+    return schedule;
+  },
+
+  async getSchedules(userId: string) {
+    const { data: schedules, error } = await supabaseDb
+      .from('schedules')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return schedules;
+  },
+
+  async updateSchedule(id: number, data: any) {
+    const { data: schedule, error } = await supabaseDb
+      .from('schedules')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return schedule;
+  },
+
+  async deleteSchedule(id: number) {
+    const { error } = await supabaseDb
+      .from('schedules')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+};

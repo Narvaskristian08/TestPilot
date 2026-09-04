@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { PlusIcon, MagnifyingGlassIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 interface TestCase {
@@ -68,11 +69,13 @@ export function TestCasesPage() {
               <h1 className="text-3xl font-bold text-white">Test Cases</h1>
               <p className="text-gray-400 mt-1">Manage individual test cases</p>
             </div>
-            <button className="flex items-center px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <PlusIcon className="w-5 h-5 mr-2" />
               New Test Case
             </button>
           </div>
+
+          <BetaNotice surface="Test cases" />
 
           {/* Search */}
           <div className="bg-noir-card border border-noir-border rounded-lg p-4">

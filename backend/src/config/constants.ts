@@ -6,19 +6,38 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 export const CONFIG = {
   PORT: parseInt(process.env.PORT || '3001'),
   NODE_ENV: process.env.NODE_ENV || 'development',
-  
+
   DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../../storage/database.sqlite'),
   ARTIFACTS_PATH: process.env.ARTIFACTS_PATH || path.join(__dirname, '../../storage/artifacts'),
-  
-  MAX_CONCURRENT_TESTS: parseInt(process.env.MAX_CONCURRENT_TESTS || '10'),
+  SUPABASE_ARTIFACT_BUCKET: process.env.SUPABASE_ARTIFACT_BUCKET || 'test-artifacts',
+  SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS: parseInt(process.env.SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS || '3600'),
+
+  MAX_CONCURRENT_TESTS: parseInt(process.env.QA_MAX_CONCURRENT_TESTS || '1'),
   MAX_TEST_DURATION_MS: parseInt(process.env.MAX_TEST_DURATION_MS || '300000'), // 5 minutes
   MAX_PAGES_TO_CRAWL: parseInt(process.env.MAX_PAGES_TO_CRAWL || '50'),
-  
+
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-  
+
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  ENABLE_WEBSOCKET: process.env.ENABLE_WEBSOCKET === 'true' || true,
+  ENABLE_WEBSOCKET: process.env.ENABLE_WEBSOCKET !== 'false',
+
+  // Supabase
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+
+  // Resend
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || 'QA Auto <noreply@qa-auto.dev>',
+
+  // URLs
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:3001',
+
+  // Usage Limits (free service)
+  GUEST_QA_LIMIT: parseInt(process.env.GUEST_QA_LIMIT || '3'),
+  DAILY_QA_LIMIT: parseInt(process.env.DAILY_QA_LIMIT || '20'),
 };
 
 export const TEST_STATUS = {
@@ -36,6 +55,23 @@ export const TEST_RESULT_STATUS = {
   SKIPPED: 'SKIPPED',
 } as const;
 
+// Test modes (user-selectable)
+export const TEST_MODES = {
+  FUNCTIONAL: 'functional',
+  E2E: 'e2e',
+  API: 'api',
+  REGRESSION: 'regression',
+  PERFORMANCE_LOAD: 'performance_load',
+  PERFORMANCE_STRESS: 'performance_stress',
+  PERFORMANCE_SPIKE: 'performance_spike',
+  VISUAL_REGRESSION: 'visual_regression',
+  ACCESSIBILITY: 'accessibility',
+  BROWSER_COMPATIBILITY: 'browser_compatibility',
+  MOBILE: 'mobile',
+  SECURITY: 'security',
+} as const;
+
+// Individual test types within a run
 export const TEST_TYPES = {
   AVAILABILITY: 'AVAILABILITY',
   PAGE_LOAD: 'PAGE_LOAD',
@@ -46,6 +82,7 @@ export const TEST_TYPES = {
   CONSOLE_ERRORS: 'CONSOLE_ERRORS',
   NETWORK_ERRORS: 'NETWORK_ERRORS',
   ACCESSIBILITY: 'ACCESSIBILITY',
+  SECURITY: 'SECURITY',
 } as const;
 
 export const ARTIFACT_TYPES = {
@@ -63,6 +100,7 @@ export const ERROR_CATEGORY = {
   CONSOLE_ERROR: 'CONSOLE_ERROR',
   NETWORK_ERROR: 'NETWORK_ERROR',
   ACCESSIBILITY: 'ACCESSIBILITY',
+  SECURITY: 'SECURITY',
   TIMEOUT: 'TIMEOUT',
   NAVIGATION: 'NAVIGATION',
   UNKNOWN: 'UNKNOWN',

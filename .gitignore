@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -9,6 +8,22 @@ pnpm-lock.yaml
 .env.local
 .env.production
 .env.test
+
+# Database files (SQLite)
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-shm
+*.sqlite-wal
+*.db-shm
+*.db-wal
+backend/storage/database.sqlite
+backend/storage/*.sqlite
+
+# Test artifacts (screenshots, traces, videos)
+backend/storage/artifacts/
+storage/artifacts/
+artifacts/
 
 # Test results
 test-results/
@@ -57,3 +72,14 @@ temp/
 # Build outputs
 build/
 out/
+
+# Documentation (optional - comment out if you want to track these)
+# ARCHITECTURE_ANALYSIS.md
+# CHANGES_SUMMARY.md
+# DATABASE_SCHEMA.md
+# FINAL_IMPLEMENTATION_REPORT.md
+# IMPLEMENTATION_REPORT.md
+# NOIR_DASHBOARD.md
+# NOIR_IMPLEMENTATION_COMPLETE.md
+# NOIR_QUICK_START.md
+# SIDEBAR_PAGES_COMPLETE.md

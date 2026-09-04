@@ -1,0 +1,7 @@
+# Storage Directory
+
+This directory contains:
+- database.sqlite (ignored by git)
+- artifacts/ folder (ignored by git)
+
+The directory structure is preserved but contents are not tracked.

@@ -2,12 +2,34 @@ import { TestRun, TestResult, ApiResponse } from '../types';
 import { config } from '../config';
 
 const API_BASE = config.apiUrl + '/api';
+const GUEST_ID_STORAGE_KEY = 'testpilot-guest-id';
+
+function createGuestFingerprint(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 class ApiClient {
   private authToken: string | null = null;
+  private guestFingerprint: string;
+
+  constructor() {
+    this.guestFingerprint = this.loadGuestFingerprint();
+  }
 
   setAuthToken(token: string | null) {
     this.authToken = token;
+  }
+
+  getAuthToken(): string | null {
+    return this.authToken;
+  }
+
+  getGuestFingerprint(): string {
+    return this.guestFingerprint;
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
@@ -20,6 +42,8 @@ class ApiClient {
       if (this.authToken) {
         headers['Authorization'] = `Bearer ${this.authToken}`;
       }
+
+      headers['X-Guest-ID'] = this.guestFingerprint;
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
@@ -46,6 +70,23 @@ class ApiClient {
         throw error;
       }
       throw error; // Re-throw structured error
+    }
+  }
+
+  private loadGuestFingerprint(): string {
+    if (typeof window === 'undefined') {
+      return 'server-guest';
+    }
+
+    try {
+      const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+      if (existing) return existing;
+
+      const fingerprint = createGuestFingerprint();
+      window.localStorage.setItem(GUEST_ID_STORAGE_KEY, fingerprint);
+      return fingerprint;
+    } catch {
+      return createGuestFingerprint();
     }
   }
 

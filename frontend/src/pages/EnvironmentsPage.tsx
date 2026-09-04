@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { BetaNotice } from '../components/BetaNotice';
 import { PlusIcon, ServerIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 interface Environment {
@@ -70,11 +71,13 @@ export function EnvironmentsPage() {
               <h1 className="text-3xl font-bold text-white">Environments</h1>
               <p className="text-gray-400 mt-1">Manage test environments and configurations</p>
             </div>
-            <button className="flex items-center px-4 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
+            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               <PlusIcon className="w-5 h-5 mr-2" />
               New Environment
             </button>
           </div>
+
+          <BetaNotice surface="Environments" />
 
           {/* Environments Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

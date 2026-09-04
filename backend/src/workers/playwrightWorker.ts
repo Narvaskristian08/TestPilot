@@ -10,8 +10,10 @@ import { runFormTest } from './tests/formTest';
 import { runResponsiveTest } from './tests/responsiveTest';
 import { createConsoleCollector, buildConsoleTestResult } from './tests/consoleTest';
 import { runAccessibilityTest } from './tests/accessibilityTest';
+import { runSecurityTest } from './tests/securityTest';
 import path from 'path';
 import fs from 'fs';
+import { cleanupLocalArtifact, persistArtifact } from '../services/artifactStorage';
 
 export type BrowserType = 'chromium' | 'firefox' | 'webkit';
 
@@ -104,7 +106,7 @@ export class PlaywrightWorker {
     const startTime = Date.now();
 
     // Total test steps for progress calculation
-    const totalSteps = 9;
+    const totalSteps = 10;
     let step = 0;
 
     try {
@@ -283,7 +285,20 @@ export class PlaywrightWorker {
         ...a11yResult,
       });
 
-      this.emitProgress(runId, 'Accessibility', TEST_TYPES.ACCESSIBILITY, a11yResult.status, 100);
+      this.emitProgress(runId, 'Accessibility', TEST_TYPES.ACCESSIBILITY, a11yResult.status, Math.round((step / totalSteps) * 100));
+
+      // ── Test 10: Security Check ──────────────────────────────────────────
+      step++;
+      this.emitProgress(runId, 'Security Check', TEST_TYPES.SECURITY, 'running', Math.round((step / totalSteps) * 100));
+
+      const securityResult = await runSecurityTest(this.page, url);
+      results.push({
+        ...securityResult,
+        testName: 'Security Check',
+        testType: TEST_TYPES.SECURITY,
+      });
+
+      this.emitProgress(runId, 'Security Check', TEST_TYPES.SECURITY, securityResult.status, 100);
 
       // ── Save Trace (if any failures/warnings) ────────────────────────────
       const hasFailuresOrWarnings = results.some(
@@ -375,7 +390,7 @@ export class PlaywrightWorker {
         screenshotPath = await this.captureTestScreenshot(runId, result.testName);
       }
 
-      const savedResult = TestResultModel.create({
+      const savedResult = await TestResultModel.create({
         run_id: runId,
         test_name: result.testName,
         test_type: result.testType,
@@ -391,33 +406,47 @@ export class PlaywrightWorker {
 
       // Attach screenshot artifact if available
       if (screenshotPath && savedResult.id) {
-        const stats = fs.statSync(screenshotPath);
-        TestArtifactModel.create({
-          result_id: savedResult.id,
-          artifact_type: 'SCREENSHOT',
-          file_path: screenshotPath,
-          file_size: stats.size,
-        });
+        try {
+          const stats = fs.statSync(screenshotPath);
+          const storedPath = await persistArtifact(screenshotPath, runId, 'image/png');
+          await TestArtifactModel.create({
+            result_id: savedResult.id,
+            run_id: runId,
+            artifact_type: 'SCREENSHOT',
+            file_path: storedPath,
+            file_size: stats.size,
+            mime_type: 'image/png',
+          });
+        } catch (error) {
+          console.error(`[PlaywrightWorker] Failed to persist screenshot for ${result.testName}:`, error);
+        } finally {
+          await cleanupLocalArtifact(screenshotPath);
+        }
       }
 
       // Attach trace artifact to first failed test (trace covers all tests)
       if (tracePath && savedResult.id && result.status === TEST_RESULT_STATUS.FAILED && failed === 1) {
-        const stats = fs.statSync(tracePath);
-        TestArtifactModel.create({
-          result_id: savedResult.id,
-          artifact_type: 'TRACE',
-          file_path: tracePath,
-          file_size: stats.size,
-        });
+        try {
+          const stats = fs.statSync(tracePath);
+          const storedPath = await persistArtifact(tracePath, runId, 'application/zip');
+          await TestArtifactModel.create({
+            result_id: savedResult.id,
+            run_id: runId,
+            artifact_type: 'TRACE',
+            file_path: storedPath,
+            file_size: stats.size,
+            mime_type: 'application/zip',
+          });
+        } catch (error) {
+          console.error(`[PlaywrightWorker] Failed to persist trace for run ${runId}:`, error);
+        }
       }
     }
 
-    TestRunModel.updateStats(runId, {
-      total_tests: results.length,
-      passed_tests: passed,
-      failed_tests: failed,
-      warning_tests: warnings,
-      duration_ms: totalDuration,
-    });
+    if (tracePath) {
+      await cleanupLocalArtifact(tracePath);
+    }
+
+    // updateStats method was removed, status is updated by the testRunner
   }
 }

@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { TestStatusEvent } from '../types';
+import { config } from '../config';
+import { apiClient } from './api';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -13,27 +15,47 @@ class SocketService {
       return;
     }
 
-    this.socket = io('http://localhost:3001', {
+    this.socket = io(config.socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      auth: {
+        token: apiClient.getAuthToken(),
+        guestFingerprint: apiClient.getGuestFingerprint(),
+      },
     });
 
     this.socket.on('connect', () => {
       console.log('[socket] WebSocket connected');
+      this.listeners.forEach((_listeners, key) => {
+        this.socket?.emit('subscribe', key.replace('test-', ''));
+      });
     });
 
     this.socket.on('disconnect', () => {
       console.log('[socket] WebSocket disconnected');
     });
 
-    this.socket.on('test-status', (data: TestStatusEvent) => {
+    const dispatch = (data: TestStatusEvent) => {
       const listeners = this.listeners.get(`test-${data.runId}`);
       if (listeners) {
         listeners.forEach(callback => callback(data));
       }
-    });
+    };
+
+    this.socket.on('test:progress', dispatch);
+    this.socket.on('test:update', dispatch);
+  }
+
+  refreshIdentity(): void {
+    if (!this.socket) return;
+
+    const shouldReconnect = this.socket.connected || this.listeners.size > 0;
+    this.socket.disconnect();
+    if (shouldReconnect) {
+      this.connect();
+    }
   }
 
   /**
@@ -50,18 +72,19 @@ class SocketService {
    * Subscribe to test run updates
    */
   subscribeToTest(runId: number, callback: (data: TestStatusEvent) => void): () => void {
-    if (!this.socket?.connected) {
-      this.connect();
-    }
-
     const key = `test-${runId}`;
-    
+
     if (!this.listeners.has(key)) {
       this.listeners.set(key, new Set());
-      this.socket?.emit('subscribe', String(runId));
     }
 
     this.listeners.get(key)!.add(callback);
+
+    if (!this.socket) {
+      this.connect();
+    } else if (this.socket.connected) {
+      this.socket.emit('subscribe', String(runId));
+    }
 
     // Return unsubscribe function
     return () => {
@@ -71,7 +94,9 @@ class SocketService {
         
         if (listeners.size === 0) {
           this.listeners.delete(key);
-          this.socket?.emit('unsubscribe', String(runId));
+          if (this.socket?.connected) {
+            this.socket.emit('unsubscribe', String(runId));
+          }
         }
       }
     };
