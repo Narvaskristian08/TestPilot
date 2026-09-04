@@ -35,7 +35,7 @@ TestPilot is a web-based automated QA testing platform that allows users to test
 ### For Developers
 - 🔒 **SSRF Protection** - Built-in security to prevent testing private networks
 - 🚦 **Rate Limiting** - Protect against abuse
-- 💾 **Supabase Postgres** - Hosted persistence for test runs, results, usage, and auth profiles
+- 💾 **Flexible persistence** - Local SQLite for zero-config development, Supabase Postgres for hosted persistence
 - 🔌 **WebSocket Updates** - Real-time test status via Socket.IO
 - 🎯 **RESTful API** - Clean API for test management
 - 🚢 **Hosted Deployment** - Vercel frontend, Render worker/API, and Supabase services
@@ -106,19 +106,22 @@ npx playwright install chromium
 
 ### 4. Configure Backend Environment
 
-The backend needs Supabase credentials for the working test flow. To configure it locally:
+The backend can run locally without a cloud account. When the three backend Supabase variables are blank, TestPilot automatically uses SQLite at `backend/storage/database.local.sqlite` and stores screenshots/traces under `backend/storage/artifacts`. Guest testing, live progress, results, cancellation, and deletion work in this mode. Supabase is required for hosted persistence and email/password authentication.
+
+To configure the local backend:
 
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env if needed
+# Leave the Supabase variables blank for local guest mode.
+# Add Supabase values only when you want hosted persistence/authentication.
 ```
 
 Default configuration:
 - Backend Port: `3001`
 - Frontend Port: `5173`
-- Database: Supabase Postgres
-- Artifact bucket: private `test-artifacts` Storage bucket
+- Database: local SQLite by default; Supabase Postgres when configured
+- Artifacts: local files by default; private `test-artifacts` Storage bucket when configured
 - Max concurrent tests: `1`
 
 ## 🎮 Running TestPilot
@@ -934,8 +937,11 @@ supabase migration list --linked
 supabase db push --linked
 ```
 
-The local SQLite files under `backend/storage/` are legacy development artifacts and
-must not be committed or used as the beta persistence layer.
+Local development does not require Supabase or Docker. The backend creates
+`backend/storage/database.local.sqlite` automatically when Supabase credentials are
+absent. Local artifacts are served by the backend from `backend/storage/artifacts`.
+These SQLite and artifact files are ignored by Git and should not be used as the beta
+persistence layer.
 
 ### Adding New Tests
 
@@ -974,10 +980,24 @@ export async function runMyTest(page: Page): Promise<TestResultData> {
 
 **Error**: `Port 3001 already in use`
 
-**Solution**:
+**Option 1 — use the backend that is already running**: leave the frontend pointed at
+`http://localhost:3001` and start only the frontend with `npm run dev:frontend`.
+
+**Option 2 — use another local port**:
+
 ```bash
-# Find and kill the process using port 3001
-lsof -ti:3001 | xargs kill -9
+# Terminal 1
+PORT=3101 npm run dev:backend
+
+# Terminal 2
+VITE_API_URL=http://localhost:3101 VITE_SOCKET_URL=http://localhost:3101 npm run dev:frontend
+```
+
+To stop an old development process after checking it is yours:
+
+```bash
+# Inspect the process using port 3001
+lsof -nP -iTCP:3001 -sTCP:LISTEN
 ```
 
 ### Frontend can't connect to backend
@@ -1028,13 +1048,14 @@ npx playwright install chromium
 PORT=3001
 NODE_ENV=development
 
-# Persistence and temporary local artifact staging
-ARTIFACTS_PATH=/tmp/testpilot-artifacts
+# Local persistence and artifact staging. Supabase replaces these for hosted runs.
+DATABASE_PATH=./storage/database.local.sqlite
+ARTIFACTS_PATH=./storage/artifacts
 
-# Supabase (required by the backend test flow)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=eyJhbGc...your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...your_service_role_key_here
+# Supabase (optional locally; required for hosted persistence and authentication)
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_ARTIFACT_BUCKET=test-artifacts
 SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS=3600
 

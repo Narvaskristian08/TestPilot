@@ -7,7 +7,7 @@ TestPilot (also branded as NOIR QA Automation in the current UI) is a web QA pla
 The repository is a split application:
 
 - `frontend/`: React 18 + TypeScript + Vite + TailwindCSS + React Router.
-- `backend/`: Node.js + Express + TypeScript, Supabase-backed persistence, Playwright workers, and Socket.IO. SQLite remains a local legacy dependency and is not the beta artifact store.
+- `backend/`: Node.js + Express + TypeScript, Supabase-backed hosted persistence with a SQLite/local-artifact development fallback, Playwright workers, and Socket.IO.
 - `supabase/`: version-controlled Postgres migrations and Storage configuration for the hosted beta.
 - `tests/` and `pages/`: Playwright regression tests and page objects for the application.
 
@@ -39,7 +39,7 @@ The local development targets documented by the project are:
 - The working tree began with substantial pre-existing edits, new documentation, migrations, and generated artifacts. The release work is being prepared on the `codex/noir-theme-refactor` branch; do not reset, checkout, or delete unrelated work.
 - The repository documentation is ahead of the checked source in a few places. The baseline builds exposed TypeScript issues in legacy components, optional fields, progress event typing, the Supabase no-credentials path, and backend Promise handling. Those blockers are now fixed for the current source; treat passing builds and actual runtime behavior as the source of truth.
 - The current dashboard was previously mounted at `/`. The landing-page implementation moves it to `/dashboard`, keeps test-run detail routes intact, and makes `/` the public entry point.
-- The frontend can load without Supabase client variables, but the backend's current persistence layer requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` for guest runs, authenticated runs, and artifact storage.
+- The frontend can load without Supabase client variables. When backend Supabase variables are absent, local guest runs use SQLite and local artifact files; hosted persistence, artifact storage, and email/password authentication require `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Development rules
 
@@ -102,7 +102,7 @@ The local development targets documented by the project are:
 - A visitor landing on `/` sees the TestPilot value proposition and can start or open the dashboard.
 - `/dashboard` renders the existing NOIR dashboard and can accept a URL forwarded from the landing page.
 - Internal links and auth redirects point to the dashboard rather than the landing page.
-- Missing frontend Supabase variables do not block the landing page; the backend beta flow requires its Supabase credentials.
+- Missing frontend Supabase variables do not block the landing page or local guest flow; the hosted beta flow requires backend Supabase credentials.
 - The UI uses the NOIR Developer Console visual system consistently across public, authenticated, management, and test-result surfaces.
 - `frontend/npm run build` passes, or any remaining failure is documented with its exact source and reason.
 - The frontend can be deployed from `frontend/` to Vercel and the backend can be deployed from `backend/` to Render using the documented environment variables.

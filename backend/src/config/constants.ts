@@ -7,7 +7,9 @@ export const CONFIG = {
   PORT: parseInt(process.env.PORT || '3001'),
   NODE_ENV: process.env.NODE_ENV || 'development',
 
-  DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../../storage/database.sqlite'),
+  // SQLite is the zero-config local development database. Hosted deployments
+  // use Supabase when all backend Supabase credentials are present.
+  DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../../storage/database.local.sqlite'),
   ARTIFACTS_PATH: process.env.ARTIFACTS_PATH || path.join(__dirname, '../../storage/artifacts'),
   SUPABASE_ARTIFACT_BUCKET: process.env.SUPABASE_ARTIFACT_BUCKET || 'test-artifacts',
   SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS: parseInt(process.env.SUPABASE_ARTIFACT_SIGNED_URL_TTL_SECONDS || '3600'),

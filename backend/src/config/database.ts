@@ -1,46 +1,39 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { CONFIG } from './constants';
+import { createLocalDatabase } from './localDatabase';
 
-// Check if Supabase is configured
-const isConfigured = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+// The hosted beta uses Supabase. Local development falls back to SQLite so
+// the guest flow works without requiring a cloud project or Docker.
+const isConfigured = Boolean(
+  CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY && CONFIG.SUPABASE_SERVICE_ROLE_KEY
+);
 
 if (!isConfigured) {
   console.warn('');
-  console.warn('╔════════════════════════════════════════════════════════════╗');
-  console.warn('║  ⚠️  SUPABASE NOT CONFIGURED                               ║');
-  console.warn('╚════════════════════════════════════════════════════════════╝');
+  console.warn('╔══════════════════════════════════════════════════════════════╗');
+  console.warn('║  SUPABASE NOT CONFIGURED — USING LOCAL SQLITE                ║');
+  console.warn('╚══════════════════════════════════════════════════════════════╝');
   console.warn('');
-  console.warn('Database features are DISABLED.');
+  console.warn(`Local database: ${CONFIG.DATABASE_PATH}`);
+  console.warn('Guest test runs and local artifact files are enabled.');
+  console.warn('Email/password authentication requires Supabase credentials.');
   console.warn('');
-  console.warn('To enable database:');
-  console.warn('1. Create a Supabase project at https://supabase.com');
-  console.warn('2. Copy your credentials from Settings → API');
-  console.warn('3. Add to backend/.env:');
-  console.warn('   SUPABASE_URL=https://xxxxx.supabase.co');
-  console.warn('   SUPABASE_ANON_KEY=eyJhbGc...');
-  console.warn('   SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...');
+  console.warn('To use hosted Supabase instead, add to backend/.env:');
+  console.warn('SUPABASE_URL=https://xxxxx.supabase.co');
+  console.warn('SUPABASE_ANON_KEY=eyJhbGc...');
+  console.warn('SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...');
   console.warn('');
 }
 
-// Create a dummy client that provides helpful error messages
-const createDummyClient = (): SupabaseClient => {
-  const handler = {
-    get: (target: any, prop: string) => {
-      throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env');
-    }
-  };
-  return new Proxy({} as SupabaseClient, handler);
-};
-
 // Admin client for database operations (uses service role key)
-export const supabaseDb = isConfigured && CONFIG.SUPABASE_SERVICE_ROLE_KEY
+export const supabaseDb: any = isConfigured
   ? createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     })
-  : createDummyClient();
+  : createLocalDatabase(CONFIG.DATABASE_PATH);
 
 export default supabaseDb;
 

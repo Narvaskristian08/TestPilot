@@ -177,7 +177,7 @@ export class DailyUsageModel {
       .order('usage_date', { ascending: false });
 
     if (error) return [];
-    return (data || []).map(item => ({
+    return (data || []).map((item: { usage_date: string; test_count: number }) => ({
       date: item.usage_date,
       tests_used: item.test_count,
     }));
