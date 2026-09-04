@@ -155,7 +155,7 @@ export function LandingPage() {
               {error ? <p className="px-3 pb-1 pt-2 text-xs text-rose-300">{error}</p> : null}
             </form>
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-noir-text-muted">
-              <span className="inline-flex items-center gap-1.5"><CheckCircleIcon className="h-4 w-4 text-success-500" />3 free guest runs</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircleIcon className="h-4 w-4 text-success-500" />Guest access included</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircleIcon className="h-4 w-4 text-success-500" />No setup required</span>
               <button type="button" onClick={tryExample} className="text-noir-text-secondary transition-colors hover:text-noir-text-primary">Try example.com →</button>
             </div>

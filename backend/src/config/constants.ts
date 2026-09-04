@@ -23,6 +23,9 @@ export const CONFIG = {
 
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   ENABLE_WEBSOCKET: process.env.ENABLE_WEBSOCKET !== 'false',
+  // QA-run caps are opt-in. API rate limiting and target URL protections
+  // remain enabled regardless of this setting.
+  ENABLE_USAGE_LIMITS: process.env.ENABLE_USAGE_LIMITS === 'true',
 
   // Supabase
   SUPABASE_URL: process.env.SUPABASE_URL || '',
@@ -37,7 +40,7 @@ export const CONFIG = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:3001',
 
-  // Usage Limits (free service)
+  // Optional usage limits (only enforced when ENABLE_USAGE_LIMITS=true)
   GUEST_QA_LIMIT: parseInt(process.env.GUEST_QA_LIMIT || '3'),
   DAILY_QA_LIMIT: parseInt(process.env.DAILY_QA_LIMIT || '20'),
 };

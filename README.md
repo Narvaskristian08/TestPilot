@@ -34,7 +34,7 @@ TestPilot is a web-based automated QA testing platform that allows users to test
 
 ### For Developers
 - 🔒 **SSRF Protection** - Built-in security to prevent testing private networks
-- 🚦 **Rate Limiting** - Protect against abuse
+- 🚦 **Rate Limiting** - Protect against abuse without restricting QA runs
 - 💾 **Flexible persistence** - Local SQLite for zero-config development, Supabase Postgres for hosted persistence
 - 🔌 **WebSocket Updates** - Real-time test status via Socket.IO
 - 🎯 **RESTful API** - Clean API for test management
@@ -106,7 +106,7 @@ npx playwright install chromium
 
 ### 4. Configure Backend Environment
 
-The backend can run locally without a cloud account. When the three backend Supabase variables are blank, TestPilot automatically uses SQLite at `backend/storage/database.local.sqlite` and stores screenshots/traces under `backend/storage/artifacts`. Guest testing, live progress, results, cancellation, and deletion work in this mode. Supabase is required for hosted persistence and email/password authentication.
+The backend can run locally without a cloud account. When the three backend Supabase variables are blank, TestPilot automatically uses SQLite at `backend/storage/database.local.sqlite` and stores screenshots/traces under `backend/storage/artifacts`. Guest testing is unlimited in this mode, with live progress, results, cancellation, and deletion. Supabase is required for hosted persistence and email/password authentication.
 
 To configure the local backend:
 
@@ -896,7 +896,8 @@ TestPilot blocks testing of:
 
 - **Standard**: 100 requests per 15 minutes
 - **Test creation**: 10 tests per minute
-- **Concurrent tests**: Maximum 3 simultaneous tests
+- **Concurrent tests**: Maximum 1 simultaneous test by default
+- **QA-run caps**: Disabled by default; enable explicitly with `ENABLE_USAGE_LIMITS=true`
 
 ### Safe Testing
 

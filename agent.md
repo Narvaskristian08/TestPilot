@@ -28,7 +28,7 @@ The local development targets documented by the project are:
 - NOIR dark dashboard with live stats, recent runs, failures, charts, quick actions, and a new-run modal.
 - Test-run detail page with live progress, result summaries, artifacts, cancel, and delete actions.
 - Routes/pages for test runs, suites, cases, schedules, environments, reports, artifacts, settings, profile, login, and registration.
-- Supabase auth integration and backend-enforced guest/authenticated usage limits.
+- Supabase auth integration, backend ownership checks, and API rate limiting; QA-run caps are opt-in.
 - Frontend and backend production builds now pass after restoring the dashboard data wiring and async model calls.
 - NOIR Developer Console theme refactor applied across the public landing page, dashboard shell, management pages, auth/profile screens, test-run views, progress states, result cards, tables, modals, and usage surfaces.
 - Neutral palette is centralized in `frontend/tailwind.config.js` and `frontend/src/index.css`; status colors are reserved for passed, failed, warning, and running states.
@@ -39,14 +39,14 @@ The local development targets documented by the project are:
 - The working tree began with substantial pre-existing edits, new documentation, migrations, and generated artifacts. The release work is being prepared on the `codex/noir-theme-refactor` branch; do not reset, checkout, or delete unrelated work.
 - The repository documentation is ahead of the checked source in a few places. The baseline builds exposed TypeScript issues in legacy components, optional fields, progress event typing, the Supabase no-credentials path, and backend Promise handling. Those blockers are now fixed for the current source; treat passing builds and actual runtime behavior as the source of truth.
 - The current dashboard was previously mounted at `/`. The landing-page implementation moves it to `/dashboard`, keeps test-run detail routes intact, and makes `/` the public entry point.
-- The frontend can load without Supabase client variables. When backend Supabase variables are absent, local guest runs use SQLite and local artifact files; hosted persistence, artifact storage, and email/password authentication require `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
+- The frontend can load without Supabase client variables. When backend Supabase variables are absent, local guest runs are unlimited and use SQLite/local artifact files; hosted persistence, artifact storage, and email/password authentication require `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Development rules
 
 1. Preserve the existing frontend/backend split, package managers, lockfiles, API response shapes, and route behavior unless a requested product change requires a deliberate route update.
 2. Keep new UI code in `frontend/src` and use the existing React/TypeScript/Tailwind conventions. Prefer the installed Heroicons components and shared CSS tokens over new image assets or hand-authored SVG illustrations.
 3. Keep `/` public and marketing-oriented. Dashboard navigation, test-run pages, auth redirects, and internal links must use `/dashboard` when they mean the NOIR dashboard.
-4. Preserve guest testing and authenticated testing flows. Do not move usage enforcement into the client or store secrets in frontend source.
+4. Preserve guest testing and authenticated testing flows. Do not move optional usage enforcement into the client or store secrets in frontend source.
 5. Keep target URL validation strict to `http:` and `https:`. Continue relying on backend SSRF protection for requests initiated by the test runner.
 6. Use realistic product copy and data. Avoid claiming that mocked management pages or unverified integrations are fully live.
 7. Do not overwrite or remove user-owned work in the dirty working tree. Make focused, additive edits and inspect diffs before handing off.
@@ -95,7 +95,7 @@ The local development targets documented by the project are:
 - Persist screenshots and traces in the private `test-artifacts` Supabase Storage bucket while retaining local temporary-file support for development.
 - Apply Supabase migrations and storage configuration through the GitHub workflow using repository secrets; never commit credentials.
 - Keep mock-backed management routes visible but clearly labeled and non-mutating for the public beta.
-- Verify guest limits, authenticated usage, CORS, WebSocket progress, artifact access, URL safety, cancellation, deletion, and redeploy persistence before merging to `main`.
+- Verify API rate limits, CORS, WebSocket progress, artifact access, URL safety, cancellation, deletion, and redeploy persistence before merging to `main`. QA-run caps are only verified when explicitly enabled.
 
 ## Definition of done
 

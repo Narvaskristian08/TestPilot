@@ -40,99 +40,94 @@ router.post(
     let guestId: string | undefined;
     const ipAddress = getClientIp(req);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // USAGE CHECK - BEFORE QUEUEING
-    // ═══════════════════════════════════════════════════════════════════════
-
     if (req.user) {
-      // ─── AUTHENTICATED USER ───
       userId = req.user.id;
-
-      // Check daily limit
-      if (await DailyUsageModel.hasExceededLimit(userId)) {
-        const stats = await DailyUsageModel.getUsageStats(userId);
-        throw new AppError(
-          `Daily limit reached. You've used ${stats.used}/${stats.limit} QA runs today. Resets at midnight.`,
-          403,
-          'usage_limit_reached',
-          {
-            used: stats.used,
-            limit: stats.limit,
-            remaining: 0,
-            resetsAt: stats.resetsAt,
-            requiresAuth: false,
-          }
-        );
-      }
-
-      // Atomically increment usage (prevents race conditions)
-      const incremented = await DailyUsageModel.incrementUsage(userId);
-      if (!incremented) {
-        const stats = await DailyUsageModel.getUsageStats(userId);
-        throw new AppError(
-          `Daily limit reached. You've used ${stats.used}/${stats.limit} QA runs today.`,
-          403,
-          'usage_limit_reached',
-          {
-            used: stats.used,
-            limit: stats.limit,
-            remaining: 0,
-            resetsAt: stats.resetsAt,
-            requiresAuth: false,
-          }
-        );
-      }
     } else {
-      // ─── GUEST USER ───
       guestId = generateGuestId(guestFingerprint as string, ipAddress);
-
-      // Check guest limit (3 total runs)
-      if (await GuestUsageModel.hasExceededLimit(guestId, ipAddress)) {
-        const stats = await GuestUsageModel.getUsageStats(guestId, ipAddress);
-        throw new AppError(
-          `You've used your ${CONFIG.GUEST_QA_LIMIT} free QA runs. Create an account to continue.`,
-          403,
-          'usage_limit_reached',
-          {
-            used: stats.used,
-            limit: stats.limit,
-            remaining: 0,
-            requiresAuth: true,
-          }
-        );
-      }
-
-      // Atomically increment guest usage
-      const incremented = await GuestUsageModel.incrementUsage(guestId, ipAddress, req.headers['user-agent'] as string);
-      if (!incremented) {
-        const stats = await GuestUsageModel.getUsageStats(guestId, ipAddress);
-        throw new AppError(
-          `You've used your ${CONFIG.GUEST_QA_LIMIT} free QA runs. Create an account to continue.`,
-          403,
-          'usage_limit_reached',
-          {
-            used: stats.used,
-            limit: stats.limit,
-            remaining: 0,
-            requiresAuth: true,
-          }
-        );
-      }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // USAGE CHECK PASSED - CREATE TEST AND ADD TO QUEUE
-    // ═══════════════════════════════════════════════════════════════════════
+    // Usage caps are optional. API rate limiting and target URL protections
+    // remain active regardless of this setting.
+    if (CONFIG.ENABLE_USAGE_LIMITS) {
+      if (req.user) {
+        if (await DailyUsageModel.hasExceededLimit(userId!)) {
+          const stats = await DailyUsageModel.getUsageStats(userId!);
+          throw new AppError(
+            `Daily limit reached. You've used ${stats.used}/${stats.limit} QA runs today. Resets at midnight.`,
+            403,
+            'usage_limit_reached',
+            {
+              used: stats.used,
+              limit: stats.limit,
+              remaining: 0,
+              resetsAt: stats.resetsAt,
+              requiresAuth: false,
+            }
+          );
+        }
+
+        const incremented = await DailyUsageModel.incrementUsage(userId!);
+        if (!incremented) {
+          const stats = await DailyUsageModel.getUsageStats(userId!);
+          throw new AppError(
+            `Daily limit reached. You've used ${stats.used}/${stats.limit} QA runs today.`,
+            403,
+            'usage_limit_reached',
+            {
+              used: stats.used,
+              limit: stats.limit,
+              remaining: 0,
+              resetsAt: stats.resetsAt,
+              requiresAuth: false,
+            }
+          );
+        }
+      } else if (guestId) {
+        if (await GuestUsageModel.hasExceededLimit(guestId, ipAddress)) {
+          const stats = await GuestUsageModel.getUsageStats(guestId, ipAddress);
+          throw new AppError(
+            `You've used your ${CONFIG.GUEST_QA_LIMIT} free QA runs. Create an account to continue.`,
+            403,
+            'usage_limit_reached',
+            {
+              used: stats.used,
+              limit: stats.limit,
+              remaining: 0,
+              requiresAuth: true,
+            }
+          );
+        }
+
+        const incremented = await GuestUsageModel.incrementUsage(
+          guestId,
+          ipAddress,
+          req.headers['user-agent'] as string
+        );
+        if (!incremented) {
+          const stats = await GuestUsageModel.getUsageStats(guestId, ipAddress);
+          throw new AppError(
+            `You've used your ${CONFIG.GUEST_QA_LIMIT} free QA runs. Create an account to continue.`,
+            403,
+            'usage_limit_reached',
+            {
+              used: stats.used,
+              limit: stats.limit,
+              remaining: 0,
+              requiresAuth: true,
+            }
+          );
+        }
+      }
+    }
 
     try {
       // Create test run and add to queue
       const testRun = await startTest({ url, browser, userId, guestId });
 
-      // Get remaining usage for response
       let usageStats;
-      if (userId) {
+      if (CONFIG.ENABLE_USAGE_LIMITS && userId) {
         usageStats = await DailyUsageModel.getUsageStats(userId);
-      } else if (guestId) {
+      } else if (CONFIG.ENABLE_USAGE_LIMITS && guestId) {
         usageStats = await GuestUsageModel.getUsageStats(guestId, ipAddress);
       }
 

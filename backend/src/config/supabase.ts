@@ -11,7 +11,7 @@ if (!isConfigured) {
   console.warn('╚════════════════════════════════════════════════════════════╝');
   console.warn('');
   console.warn('Authentication features are DISABLED.');
-  console.warn('Only guest mode will work (3 QA runs per IP).');
+  console.warn('Local guest mode is enabled; QA-run caps are disabled by default.');
   console.warn('');
   console.warn('To enable authentication:');
   console.warn('1. Create a Supabase project at https://supabase.com');

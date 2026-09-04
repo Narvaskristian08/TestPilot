@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UrlInput } from '../components/UrlInput';
 import { TestProgress } from '../components/TestProgress';
-import { UsageDisplay } from '../components/UsageDisplay';
-import { AuthPrompt } from '../components/AuthPrompt';
 import { TestRun } from '../types';
 import { apiClient } from '../services/api';
 import { socketService } from '../services/socket';
@@ -17,8 +15,6 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [currentTest, setCurrentTest] = useState<TestRun | null>(null);
   const [recentTests, setRecentTests] = useState<TestRun[]>([]);
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [usageStats, setUsageStats] = useState<any>(null);
 
   useEffect(() => {
     // Set auth token if user is logged in
@@ -27,28 +23,12 @@ export const Dashboard: React.FC = () => {
     }
     
     loadRecentTests();
-    loadUsageStats();
     socketService.connect();
 
     return () => {
       socketService.disconnect();
     };
   }, [session]);
-
-  const loadUsageStats = async () => {
-    try {
-      // Only load usage stats if user is authenticated
-      if (!user) {
-        // For guests, we don't show usage until they hit the limit
-        return;
-      }
-      
-      const stats = await apiClient.getUsageStats();
-      setUsageStats(stats);
-    } catch (err) {
-      console.error('Failed to load usage stats:', err);
-    }
-  };
 
   const loadRecentTests = async () => {
     try {
@@ -65,24 +45,11 @@ export const Dashboard: React.FC = () => {
       setLoading(true);
       const testRun = await apiClient.createTestRun(url);
       setCurrentTest(testRun);
-      
-      // Reload usage stats after starting test
-      await loadUsageStats();
-      
+
       // Navigate to test run page
       navigate(`/test/${testRun.id}`);
     } catch (err: any) {
-      // Check if it's a usage limit error
-      if (err.error === 'usage_limit_reached') {
-        setError(err.message || 'Usage limit reached');
-        
-        // If requiresAuth is true, show auth prompt for guest users
-        if (err.data?.requiresAuth) {
-          setShowAuthPrompt(true);
-        }
-      } else {
-        setError(err.message || 'Failed to start test');
-      }
+      setError(err.message || 'Failed to start test');
       setLoading(false);
     }
   };
@@ -143,19 +110,6 @@ export const Dashboard: React.FC = () => {
             Automated QA testing for your website. Enter your URL and get instant quality insights.
           </p>
         </div>
-
-        {/* Usage Display */}
-        {usageStats && user && (
-          <div className="mb-8">
-            <UsageDisplay
-              isGuest={!user}
-              used={usageStats.used}
-              limit={usageStats.limit}
-              remaining={usageStats.remaining}
-              resetsAt={usageStats.resetsAt}
-            />
-          </div>
-        )}
 
         {/* Main Test Input Card */}
         <div className="bg-noir-surface rounded-lg p-8 mb-8 border border-noir-border">
@@ -313,11 +267,6 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Auth Prompt Modal */}
-      <AuthPrompt
-        isOpen={showAuthPrompt}
-        onClose={() => setShowAuthPrompt(false)}
-      />
     </div>
   );
 };
