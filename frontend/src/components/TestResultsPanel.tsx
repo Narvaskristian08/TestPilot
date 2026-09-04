@@ -29,7 +29,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({ results }) =
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Test Results</h3>
+        <h3 className="text-lg font-semibold text-noir-text-primary">Test Results</h3>
         
         {/* Filter Buttons */}
         <div className="flex gap-2">
@@ -39,8 +39,8 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({ results }) =
               onClick={() => setFilter(f)}
               className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                 filter === f
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-noir-text-primary text-noir-bg'
+                : 'bg-noir-surface text-noir-text-secondary hover:bg-noir-elevated border border-noir-border'
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
@@ -52,7 +52,7 @@ export const TestResultsPanel: React.FC<TestResultsPanelProps> = ({ results }) =
       {/* Results Grid */}
       <div className="grid gap-3">
         {filteredResults.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-noir-text-muted">
             No {filter !== 'all' ? filter : ''} tests found
           </div>
         ) : (

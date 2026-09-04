@@ -1,13 +1,29 @@
 import { TestRun, TestResult, ApiResponse } from '../types';
+import { config } from '../config';
 
-const API_BASE = '/api';
+const API_BASE = config.apiUrl + '/api';
 
 class ApiClient {
+  private authToken: string | null = null;
+
+  setAuthToken(token: string | null) {
+    this.authToken = token;
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add auth token if available
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
-          'Content-Type': 'application/json',
+          ...headers,
           ...options?.headers,
         },
         ...options,
@@ -16,7 +32,12 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+        throw {
+          message: data.message || `HTTP ${response.status}: ${response.statusText}`,
+          status: response.status,
+          error: data.error,
+          data: data.data,
+        };
       }
 
       return data;
@@ -24,7 +45,7 @@ class ApiClient {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('An unknown error occurred');
+      throw error; // Re-throw structured error
     }
   }
 
@@ -92,6 +113,52 @@ class ApiClient {
   getScreenshotUrl(runId: number, filename: string): string {
     return `${API_BASE}/tests/${runId}/screenshot/${filename}`;
   }
+
+  /**
+   * Register user (called after Supabase signup)
+   */
+  async registerUser(data: {
+    supabaseUserId: string;
+    email: string;
+    displayName: string | null;
+  }): Promise<void> {
+    await this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Get current user profile
+   */
+  async getCurrentUser(): Promise<any> {
+    const response = await this.request<any>('/auth/me');
+    return response.data;
+  }
+
+  /**
+   * Get usage stats
+   */
+  async getUsageStats(): Promise<{
+    used: number;
+    limit: number;
+    remaining: number;
+    hasExceeded: boolean;
+    resetsAt?: string;
+  }> {
+    const response = await this.request<any>('/auth/usage');
+    return response.data;
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateProfile(data: { display_name: string }): Promise<void> {
+    await this.request('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
-export const api = new ApiClient();
+export const apiClient = new ApiClient();
