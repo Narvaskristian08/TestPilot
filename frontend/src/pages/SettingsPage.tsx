@@ -1,273 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
-import { 
-  UserCircleIcon, 
-  BellIcon, 
-  KeyIcon, 
-  GlobeAltIcon,
-  ShieldCheckIcon
-} from '@heroicons/react/24/outline';
+import { apiClient } from '../services/api';
+import { BellIcon, ClipboardDocumentIcon, GlobeAltIcon, KeyIcon, ShieldCheckIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+
+const SETTINGS_KEY = 'noir-local-settings';
+const KEY_STORAGE = 'noir-local-api-key';
+type Preferences = { displayName: string; email: string; company: string; notifications: Record<string, boolean> };
+const defaultPreferences: Preferences = { displayName: '', email: '', company: '', notifications: { complete: true, failed: true, scheduled: false, weekly: false } };
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Unable to save settings.';
+
+function loadPreferences(): Preferences { try { const stored = localStorage.getItem(SETTINGS_KEY); return stored ? { ...defaultPreferences, ...JSON.parse(stored), notifications: { ...defaultPreferences.notifications, ...JSON.parse(stored).notifications } } : defaultPreferences; } catch { return defaultPreferences; } }
 
 export function SettingsPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
-
-  const tabs = [
-    { id: 'profile', name: 'Profile', icon: UserCircleIcon },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon },
-    { id: 'api', name: 'API Keys', icon: KeyIcon },
-    { id: 'integrations', name: 'Integrations', icon: GlobeAltIcon },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon },
-  ];
-
-  return (
-    <div className="flex min-h-screen bg-noir-bg">
-      <Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 lg:ml-64">
-        <DashboardHeader onMenuClick={() => setIsMobileOpen(true)} />
-        
-        <div className="p-6 space-y-6">
-          {/* Page Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-white">Settings</h1>
-            <p className="text-gray-400 mt-1">Manage your account and preferences</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar Tabs */}
-            <div className="lg:col-span-1">
-              <div className="bg-noir-card border border-noir-border rounded-lg p-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-noir-elevated text-noir-text-primary border border-noir-border'
-                        : 'text-gray-400 hover:bg-noir-bg hover:text-white'
-                    }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span className="font-medium">{tab.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="lg:col-span-3">
-              {activeTab === 'profile' && (
-                <div className="bg-noir-card border border-noir-border rounded-lg p-6 space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4">Profile Settings</h2>
-                    <p className="text-gray-400 text-sm">Manage your personal information</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        defaultValue="Kristian Narvas"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        defaultValue="knar.narvas@gmail.com"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Company
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Optional"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary placeholder-noir-text-muted focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div className="pt-4">
-                      <button className="px-6 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'notifications' && (
-                <div className="bg-noir-card border border-noir-border rounded-lg p-6 space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4">Notification Preferences</h2>
-                    <p className="text-gray-400 text-sm">Choose what notifications you receive</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {[
-                      { id: 'test-complete', label: 'Test Run Completed', description: 'Get notified when a test run finishes' },
-                      { id: 'test-failed', label: 'Test Failures', description: 'Alert me when tests fail' },
-                      { id: 'scheduled', label: 'Scheduled Tests', description: 'Notifications for scheduled test runs' },
-                      { id: 'weekly-summary', label: 'Weekly Summary', description: 'Receive a weekly summary email' },
-                    ].map((item) => (
-                      <div key={item.id} className="flex items-start justify-between py-3 border-b border-noir-border last:border-0">
-                        <div className="flex-1">
-                          <div className="text-white font-medium mb-1">{item.label}</div>
-                          <div className="text-sm text-gray-400">{item.description}</div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" defaultChecked className="sr-only peer" />
-                          <div className="w-11 h-6 bg-noir-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-noir-text-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-noir-text-primary after:border-noir-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-noir-text-primary"></div>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'api' && (
-                <div className="bg-noir-card border border-noir-border rounded-lg p-6 space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4">API Keys</h2>
-                    <p className="text-gray-400 text-sm">Manage your API keys for programmatic access</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="bg-noir-bg border border-noir-border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-white font-medium">Production API Key</span>
-                        <span className="px-2 py-1 bg-green-400/10 text-green-400 text-xs rounded-full">Active</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 px-3 py-2 bg-noir-card border border-noir-border rounded text-sm text-gray-400 font-mono">
-                          noir_pk_••••••••••••••••••••••••4a3b
-                        </code>
-                        <button className="px-3 py-2 bg-noir-border hover:bg-gray-700 text-gray-300 rounded text-sm transition-colors">
-                          Copy
-                        </button>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-2">Created 30 days ago • Last used 2 hours ago</div>
-                    </div>
-
-                    <button className="px-4 py-2 bg-noir-elevated border border-noir-border text-noir-text-primary hover:bg-noir-border rounded-md transition-colors">
-                      Generate New API Key
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'integrations' && (
-                <div className="bg-noir-card border border-noir-border rounded-lg p-6 space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4">Integrations</h2>
-                    <p className="text-gray-400 text-sm">Connect third-party services</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { name: 'Slack', status: 'connected', color: 'purple' },
-                      { name: 'Discord', status: 'not-connected', color: 'blue' },
-                      { name: 'GitHub', status: 'connected', color: 'gray' },
-                      { name: 'Jira', status: 'not-connected', color: 'blue' },
-                    ].map((integration) => (
-                      <div key={integration.name} className="bg-noir-bg border border-noir-border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-white font-medium">{integration.name}</span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            integration.status === 'connected'
-                              ? 'bg-green-400/10 text-green-400'
-                              : 'bg-gray-400/10 text-gray-400'
-                          }`}>
-                            {integration.status === 'connected' ? 'Connected' : 'Not Connected'}
-                          </span>
-                        </div>
-                        <button className={`w-full px-3 py-2 rounded text-sm transition-all ${
-                          integration.status === 'connected'
-                            ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                            : 'bg-noir-elevated text-noir-text-primary hover:bg-noir-border'
-                        }`}>
-                          {integration.status === 'connected' ? 'Disconnect' : 'Connect'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'security' && (
-                <div className="bg-noir-card border border-noir-border rounded-lg p-6 space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4">Security Settings</h2>
-                    <p className="text-gray-400 text-sm">Manage your account security</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Current Password
-                      </label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-                      />
-                    </div>
-
-                    <div className="pt-4">
-                      <button className="px-6 py-2 bg-noir-text-primary hover:bg-zinc-200 text-noir-bg rounded-md transition-colors">
-                        Update Password
-                      </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-noir-border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-white font-medium mb-1">Two-Factor Authentication</div>
-                          <div className="text-sm text-gray-400">Add an extra layer of security</div>
-                        </div>
-                        <button className="px-4 py-2 bg-noir-elevated border border-noir-border text-noir-text-primary hover:bg-noir-border rounded-md transition-colors">
-                          Enable 2FA
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+  const [isMobileOpen, setIsMobileOpen] = useState(false); const [activeTab, setActiveTab] = useState('profile'); const [preferences, setPreferences] = useState<Preferences>(defaultPreferences); const [saved, setSaved] = useState(''); const [error, setError] = useState(''); const [localKey, setLocalKey] = useState(''); const [copied, setCopied] = useState(false);
+  useEffect(() => { setPreferences(loadPreferences()); setLocalKey(localStorage.getItem(KEY_STORAGE) || ''); }, []);
+  const tabs = [{ id: 'profile', name: 'Profile', icon: UserCircleIcon }, { id: 'notifications', name: 'Notifications', icon: BellIcon }, { id: 'api', name: 'Local API key', icon: KeyIcon }, { id: 'integrations', name: 'Integrations', icon: GlobeAltIcon }, { id: 'security', name: 'Security', icon: ShieldCheckIcon }];
+  const savePreferences = async () => { setError(''); setSaved(''); try { if (apiClient.getAuthToken() && preferences.displayName.trim()) await apiClient.updateProfile({ display_name: preferences.displayName.trim() }); localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences)); setSaved('Saved'); } catch (err) { setError(errorMessage(err)); } };
+  const updateNotification = (key: string, value: boolean) => setPreferences((current) => ({ ...current, notifications: { ...current.notifications, [key]: value } }));
+  const generateKey = () => { const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().replace(/-/g, '') : `${Date.now()}${Math.random().toString(36).slice(2)}`; const next = `noir_local_${random}`; setLocalKey(next); localStorage.setItem(KEY_STORAGE, next); setCopied(false); };
+  const copyKey = async () => { if (!localKey) return; await navigator.clipboard?.writeText(localKey); setCopied(true); window.setTimeout(() => setCopied(false), 1500); };
+  const notificationItems = [{ id: 'complete', label: 'Test run completed', description: 'Keep completion feedback enabled in this browser.' }, { id: 'failed', label: 'Test failures', description: 'Show a local preference for failed runs.' }, { id: 'scheduled', label: 'Scheduled tests', description: 'Prepare notifications for future scheduler support.' }, { id: 'weekly', label: 'Weekly summary', description: 'Prepare a local preference for future summaries.' }];
+  return <div className="flex min-h-screen bg-noir-bg"><Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} /><main className="flex-1 lg:ml-64"><DashboardHeader onMenuClick={() => setIsMobileOpen(true)} /><div className="space-y-6 p-6"><div><h1 className="text-3xl font-bold text-white">Settings</h1><p className="mt-1 text-gray-400">Manage local preferences and connected account settings.</p></div><div className="grid grid-cols-1 gap-6 lg:grid-cols-4"><nav className="space-y-1 border border-noir-border bg-noir-surface p-2">{tabs.map((tab) => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm ${activeTab === tab.id ? 'bg-noir-elevated text-noir-text-primary' : 'text-noir-text-secondary hover:bg-noir-bg hover:text-noir-text-primary'}`}><tab.icon className="h-4 w-4" />{tab.name}</button>)}</nav><section className="lg:col-span-3 border border-noir-border bg-noir-surface p-6">
+  {activeTab === 'profile' && <div className="space-y-5"><div><h2 className="text-lg font-semibold text-white">Profile preferences</h2><p className="mt-1 text-sm text-noir-text-muted">These values are stored locally. An authenticated Supabase profile name is updated when available.</p></div><label className="block text-sm"><span className="mb-1.5 block text-xs uppercase tracking-wide text-noir-text-muted">Display name</span><input value={preferences.displayName} onChange={(event) => setPreferences({ ...preferences, displayName: event.target.value })} className="w-full rounded-md border border-noir-border bg-noir-bg px-3 py-2 text-sm text-noir-text-primary outline-none focus:border-zinc-500" placeholder="Your name" /></label><label className="block text-sm"><span className="mb-1.5 block text-xs uppercase tracking-wide text-noir-text-muted">Email reference</span><input type="email" value={preferences.email} onChange={(event) => setPreferences({ ...preferences, email: event.target.value })} className="w-full rounded-md border border-noir-border bg-noir-bg px-3 py-2 text-sm text-noir-text-primary outline-none focus:border-zinc-500" placeholder="you@example.com" /></label><label className="block text-sm"><span className="mb-1.5 block text-xs uppercase tracking-wide text-noir-text-muted">Company</span><input value={preferences.company} onChange={(event) => setPreferences({ ...preferences, company: event.target.value })} className="w-full rounded-md border border-noir-border bg-noir-bg px-3 py-2 text-sm text-noir-text-primary outline-none focus:border-zinc-500" placeholder="Optional" /></label><div className="flex items-center gap-3"><button onClick={() => void savePreferences()} className="rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg">Save changes</button>{saved && <span className="text-sm text-success-400">{saved}</span>}{error && <span className="text-sm text-danger-400">{error}</span>}</div></div>}
+  {activeTab === 'notifications' && <div className="space-y-5"><div><h2 className="text-lg font-semibold text-white">Notification preferences</h2><p className="mt-1 text-sm text-noir-text-muted">Preferences are saved in this browser while local mode is active.</p></div><div>{notificationItems.map((item) => <label key={item.id} className="flex items-start justify-between gap-4 border-b border-noir-border py-4 last:border-0"><span><span className="block text-sm font-medium text-white">{item.label}</span><span className="mt-1 block text-sm text-noir-text-muted">{item.description}</span></span><input type="checkbox" checked={Boolean(preferences.notifications[item.id])} onChange={(event) => updateNotification(item.id, event.target.checked)} className="mt-1 h-4 w-4 accent-white" /></label>)}</div><button onClick={() => void savePreferences()} className="rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg">Save preferences</button></div>}
+  {activeTab === 'api' && <div className="space-y-5"><div><h2 className="text-lg font-semibold text-white">Local API key</h2><p className="mt-1 text-sm text-noir-text-muted">A local reference key for development notes. The current app uses its guest fingerprint or Supabase session; this key is not sent to the backend.</p></div><div className="flex items-center gap-2 border border-noir-border bg-noir-bg p-3"><code className="min-w-0 flex-1 truncate font-mono text-sm text-noir-text-secondary">{localKey || 'No local key generated'}</code>{localKey && <button onClick={() => void copyKey()} className="flex items-center gap-1 border border-noir-border px-3 py-2 text-xs text-noir-text-secondary hover:text-noir-text-primary"><ClipboardDocumentIcon className="h-4 w-4" />{copied ? 'Copied' : 'Copy'}</button>}</div><button onClick={generateKey} className="rounded-md border border-noir-border px-4 py-2 text-sm text-noir-text-primary hover:bg-noir-elevated">{localKey ? 'Rotate local key' : 'Generate local key'}</button></div>}
+  {activeTab === 'integrations' && <div className="space-y-5"><div><h2 className="text-lg font-semibold text-white">Integrations</h2><p className="mt-1 text-sm text-noir-text-muted">Third-party delivery integrations are intentionally not connected in local mode, so the app does not report fake connection states.</p></div><div className="grid gap-3 md:grid-cols-2">{['Slack', 'Discord', 'GitHub', 'Jira'].map((name) => <div key={name} className="border border-noir-border bg-noir-bg p-4"><div className="flex items-center justify-between"><span className="font-medium text-white">{name}</span><span className="text-xs uppercase text-noir-text-muted">Not configured</span></div><p className="mt-2 text-sm text-noir-text-muted">Add a provider integration when delivery credentials and a backend action are available.</p></div>)}</div></div>}
+  {activeTab === 'security' && <div className="space-y-5"><div><h2 className="text-lg font-semibold text-white">Security</h2><p className="mt-1 text-sm text-noir-text-muted">Authentication remains email/password through Supabase when configured.</p></div><div className="border border-noir-border bg-noir-bg p-4"><div className="flex items-start gap-3"><ShieldCheckIcon className="h-5 w-5 shrink-0 text-noir-text-secondary" /><div><h3 className="text-sm font-medium text-white">Local guest mode</h3><p className="mt-1 text-sm text-noir-text-muted">No password is stored locally. Test ownership uses the browser guest fingerprint, and QA-run limits are disabled by default.</p></div></div></div><div className="border border-noir-border bg-noir-bg p-4 text-sm text-noir-text-muted">To change an authenticated account password or enable MFA, configure Supabase Auth and use its account security flow.</div></div>}
+        </section></div></div></main></div>;
 }

@@ -7,6 +7,7 @@ import { CONFIG } from './config/constants';
 import { supabase } from './config/supabase';
 import testRoutes from './routes/tests';
 import authRoutes from './routes/auth';
+import managementRoutes from './routes/management';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { initTestRunner } from './services/testRunner';
@@ -51,6 +52,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/tests', testRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/management', managementRoutes);
 
 // Serve artifacts
 app.use('/api/artifacts', express.static(CONFIG.ARTIFACTS_PATH));

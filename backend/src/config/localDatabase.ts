@@ -198,6 +198,7 @@ function identifier(value: string): string {
 
 function serialize(value: unknown): unknown {
   if (value === undefined) return null;
+  if (typeof value === 'boolean') return value ? 1 : 0;
   if (value !== null && typeof value === 'object') return JSON.stringify(value);
   return value;
 }

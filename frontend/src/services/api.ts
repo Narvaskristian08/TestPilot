@@ -1,4 +1,14 @@
-import { TestRun, TestResult, ApiResponse } from '../types';
+import {
+  TestRun,
+  TestResult,
+  ApiResponse,
+  ManagedArtifact,
+  ManagedCase,
+  ManagedEnvironment,
+  ManagedReport,
+  ManagedSchedule,
+  ManagedSuite,
+} from '../types';
 import { config } from '../config';
 
 const API_BASE = config.apiUrl + '/api';
@@ -199,6 +209,153 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async getSuites(): Promise<ManagedSuite[]> {
+    const response = await this.request<ManagedSuite[]>('/management/suites');
+    return response.data || [];
+  }
+
+  async createSuite(data: { name: string; description?: string }): Promise<ManagedSuite> {
+    const response = await this.request<ManagedSuite>('/management/suites', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateSuite(id: number, data: { name?: string; description?: string }): Promise<ManagedSuite> {
+    const response = await this.request<ManagedSuite>(`/management/suites/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteSuite(id: number): Promise<void> {
+    await this.request(`/management/suites/${id}`, { method: 'DELETE' });
+  }
+
+  async getCases(suiteId?: number): Promise<ManagedCase[]> {
+    const query = suiteId ? `?suiteId=${suiteId}` : '';
+    const response = await this.request<ManagedCase[]>(`/management/cases${query}`);
+    return response.data || [];
+  }
+
+  async createCase(data: {
+    name: string;
+    type: string;
+    description?: string;
+    suite_id?: number | null;
+    status?: 'active' | 'inactive';
+  }): Promise<ManagedCase> {
+    const response = await this.request<ManagedCase>('/management/cases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateCase(id: number, data: Partial<ManagedCase>): Promise<ManagedCase> {
+    const response = await this.request<ManagedCase>(`/management/cases/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteCase(id: number): Promise<void> {
+    await this.request(`/management/cases/${id}`, { method: 'DELETE' });
+  }
+
+  async getSchedules(): Promise<ManagedSchedule[]> {
+    const response = await this.request<ManagedSchedule[]>('/management/schedules');
+    return response.data || [];
+  }
+
+  async createSchedule(data: {
+    name: string;
+    suite_id?: number | null;
+    cron_expression: string;
+    timezone: string;
+  }): Promise<ManagedSchedule> {
+    const response = await this.request<ManagedSchedule>('/management/schedules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateSchedule(id: number, data: Partial<ManagedSchedule>): Promise<ManagedSchedule> {
+    const response = await this.request<ManagedSchedule>(`/management/schedules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async toggleSchedule(id: number): Promise<ManagedSchedule> {
+    const response = await this.request<ManagedSchedule>(`/management/schedules/${id}/toggle`, {
+      method: 'POST',
+    });
+    return response.data!;
+  }
+
+  async deleteSchedule(id: number): Promise<void> {
+    await this.request(`/management/schedules/${id}`, { method: 'DELETE' });
+  }
+
+  async getEnvironments(): Promise<ManagedEnvironment[]> {
+    const response = await this.request<ManagedEnvironment[]>('/management/environments');
+    return response.data || [];
+  }
+
+  async createEnvironment(data: {
+    name: string;
+    url: string;
+    type: string;
+    status?: string;
+    description?: string;
+  }): Promise<ManagedEnvironment> {
+    const response = await this.request<ManagedEnvironment>('/management/environments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateEnvironment(id: number, data: Partial<ManagedEnvironment>): Promise<ManagedEnvironment> {
+    const response = await this.request<ManagedEnvironment>(`/management/environments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteEnvironment(id: number): Promise<void> {
+    await this.request(`/management/environments/${id}`, { method: 'DELETE' });
+  }
+
+  async getReports(): Promise<ManagedReport[]> {
+    const response = await this.request<ManagedReport[]>('/management/reports');
+    return response.data || [];
+  }
+
+  async createReport(data: { title: string; period_start?: string; period_end?: string }): Promise<ManagedReport> {
+    const response = await this.request<ManagedReport>('/management/reports', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteReport(id: number): Promise<void> {
+    await this.request(`/management/reports/${id}`, { method: 'DELETE' });
+  }
+
+  async getArtifacts(): Promise<ManagedArtifact[]> {
+    const response = await this.request<ManagedArtifact[]>('/management/artifacts');
+    return response.data || [];
   }
 }
 

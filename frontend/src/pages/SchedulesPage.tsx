@@ -1,174 +1,23 @@
-import { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
-import { BetaNotice } from '../components/BetaNotice';
-import { PlusIcon, ClockIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
+import { Field, fieldClassName, ManagementModal } from '../components/ManagementModal';
+import { apiClient } from '../services/api';
+import { ManagedSchedule, ManagedSuite } from '../types';
+import { ClockIcon, PencilIcon, PauseIcon, PlayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-interface Schedule {
-  id: number;
-  name: string;
-  suite: string;
-  cron: string;
-  nextRun: string;
-  enabled: boolean;
-  timezone: string;
-}
-
-const mockSchedules: Schedule[] = [
-  {
-    id: 1,
-    name: 'Daily Smoke Tests',
-    suite: 'Smoke Tests',
-    cron: '0 9 * * *',
-    nextRun: 'Tomorrow at 9:00 AM',
-    enabled: true,
-    timezone: 'UTC',
-  },
-  {
-    id: 2,
-    name: 'Weekly Regression',
-    suite: 'Regression Suite',
-    cron: '0 0 * * 0',
-    nextRun: 'Sunday at 12:00 AM',
-    enabled: true,
-    timezone: 'UTC',
-  },
-  {
-    id: 3,
-    name: 'Hourly Health Check',
-    suite: 'Smoke Tests',
-    cron: '0 * * * *',
-    nextRun: 'In 45 minutes',
-    enabled: false,
-    timezone: 'UTC',
-  },
-];
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Something went wrong. Please try again.';
 
 export function SchedulesPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [schedules, setSchedules] = useState<Schedule[]>(mockSchedules);
-
-  const toggleSchedule = (id: number) => {
-    setSchedules(schedules.map(s => 
-      s.id === id ? { ...s, enabled: !s.enabled } : s
-    ));
-  };
-
-  return (
-    <div className="flex min-h-screen bg-noir-bg">
-      <Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 lg:ml-64">
-        <DashboardHeader onMenuClick={() => setIsMobileOpen(true)} />
-        
-        <div className="p-6 space-y-6">
-          {/* Page Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Schedules</h1>
-              <p className="text-gray-400 mt-1">Automate test execution with cron schedules</p>
-            </div>
-            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-              <PlusIcon className="w-5 h-5 mr-2" />
-              New Schedule
-            </button>
-          </div>
-
-          <BetaNotice surface="Schedules" />
-
-          {/* Schedules List */}
-          <div className="space-y-4">
-            {schedules.map((schedule) => (
-              <div
-                key={schedule.id}
-                className="bg-noir-surface border border-noir-border rounded-lg p-6 hover:border-zinc-500 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                      schedule.enabled 
-                        ? 'bg-noir-elevated border border-noir-border' 
-                        : 'bg-gray-600/10 border border-gray-600/20'
-                    }`}>
-                      <ClockIcon className={`w-6 h-6 ${schedule.enabled ? 'text-noir-text-primary' : 'text-gray-400'}`} />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-white">{schedule.name}</h3>
-                        <span className={`px-2.5 py-1 text-xs font-medium border rounded-full ${
-                          schedule.enabled 
-                            ? 'bg-green-400/10 text-green-400 border-green-400/20' 
-                            : 'bg-gray-400/10 text-gray-400 border-gray-400/20'
-                        }`}>
-                          {schedule.enabled ? 'ENABLED' : 'DISABLED'}
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-6 text-gray-400">
-                          <div>
-                            <span className="text-gray-500">Suite:</span>
-                            <span className="ml-2 text-noir-text-secondary font-mono">{schedule.suite}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Cron:</span>
-                            <span className="ml-2 font-mono">{schedule.cron}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Timezone:</span>
-                            <span className="ml-2">{schedule.timezone}</span>
-                          </div>
-                        </div>
-                        {schedule.enabled && (
-                          <div className="text-gray-400">
-                            <span className="text-gray-500">Next run:</span>
-                            <span className="ml-2 text-white">{schedule.nextRun}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled
-                      onClick={() => toggleSchedule(schedule.id)}
-                      title="Available after beta"
-                      className={`p-2.5 rounded-lg border transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
-                        schedule.enabled
-                          ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
-                          : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
-                      }`}
-                    >
-                      {schedule.enabled ? (
-                        <PauseIcon className="w-5 h-5" />
-                      ) : (
-                        <PlayIcon className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Empty State */}
-          {schedules.length === 0 && (
-            <div className="bg-noir-card border-2 border-dashed border-noir-border rounded-lg p-12 text-center">
-              <ClockIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No schedules yet</h3>
-              <p className="text-gray-400 mb-6">
-                Create your first automated test schedule
-              </p>
-              <button disabled title="Available after beta" className="px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-                Create Schedule
-              </button>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+  const [isMobileOpen, setIsMobileOpen] = useState(false); const [schedules, setSchedules] = useState<ManagedSchedule[]>([]); const [suites, setSuites] = useState<ManagedSuite[]>([]); const [loading, setLoading] = useState(true); const [pageError, setPageError] = useState('');
+  const [modalOpen, setModalOpen] = useState(false); const [editing, setEditing] = useState<ManagedSchedule | null>(null); const [saving, setSaving] = useState(false); const [modalError, setModalError] = useState(''); const [name, setName] = useState(''); const [cron, setCron] = useState('0 9 * * *'); const [timezone, setTimezone] = useState('UTC'); const [suiteId, setSuiteId] = useState('');
+  const suiteName = (id?: number | null) => suites.find((suite) => suite.id === id)?.name || 'Unassigned';
+  const load = async () => { setLoading(true); try { const [loadedSchedules, loadedSuites] = await Promise.all([apiClient.getSchedules(), apiClient.getSuites()]); setSchedules(loadedSchedules); setSuites(loadedSuites); setPageError(''); } catch (error) { setPageError(errorMessage(error)); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
+  const openCreate = () => { setEditing(null); setName(''); setCron('0 9 * * *'); setTimezone('UTC'); setSuiteId(''); setModalError(''); setModalOpen(true); };
+  const openEdit = (schedule: ManagedSchedule) => { setEditing(schedule); setName(schedule.name); setCron(schedule.cron_expression); setTimezone(schedule.timezone || 'UTC'); setSuiteId(schedule.suite_id ? String(schedule.suite_id) : ''); setModalError(''); setModalOpen(true); };
+  const save = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setModalError(''); try { const payload = { name, cron_expression: cron, timezone, suite_id: suiteId ? Number(suiteId) : null }; if (editing) await apiClient.updateSchedule(editing.id, payload); else await apiClient.createSchedule(payload); setModalOpen(false); await load(); } catch (error) { setModalError(errorMessage(error)); } finally { setSaving(false); } };
+  const toggle = async (schedule: ManagedSchedule) => { try { const updated = await apiClient.toggleSchedule(schedule.id); setSchedules((items) => items.map((item) => item.id === updated.id ? updated : item)); } catch (error) { setPageError(errorMessage(error)); } };
+  const remove = async (schedule: ManagedSchedule) => { if (!window.confirm(`Delete “${schedule.name}”?`)) return; try { await apiClient.deleteSchedule(schedule.id); await load(); } catch (error) { setPageError(errorMessage(error)); } };
+  return <div className="flex min-h-screen bg-noir-bg"><Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} /><main className="flex-1 lg:ml-64"><DashboardHeader onMenuClick={() => setIsMobileOpen(true)} /><div className="space-y-6 p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-white">Schedules</h1><p className="mt-1 text-gray-400">Save cron-based test plans for your local workspace.</p></div><button onClick={openCreate} className="flex items-center rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg"><PlusIcon className="mr-2 h-5 w-5" />New Schedule</button></div><div className="border border-noir-border bg-noir-secondary px-4 py-3 text-sm text-noir-text-muted">Schedules are stored and toggleable locally. Automatic execution is not started until a scheduler worker is configured.</div>{pageError && <div className="border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-400">{pageError}</div>}{loading ? <div className="py-16 text-center text-noir-text-muted">Loading schedules…</div> : schedules.length === 0 ? <div className="border border-dashed border-noir-border p-12 text-center"><ClockIcon className="mx-auto mb-4 h-10 w-10 text-noir-text-muted" /><h2 className="text-lg font-medium text-white">No schedules yet</h2><button onClick={openCreate} className="mt-5 rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg">Create Schedule</button></div> : <div className="space-y-3">{schedules.map((schedule) => <div key={schedule.id} className="border border-noir-border bg-noir-surface p-5 hover:border-zinc-500"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-4"><div className="flex h-10 w-10 items-center justify-center border border-noir-border bg-noir-elevated"><ClockIcon className="h-5 w-5 text-noir-text-secondary" /></div><div><div className="flex flex-wrap items-center gap-3"><h2 className="text-base font-semibold text-white">{schedule.name}</h2><span className={`text-xs ${schedule.enabled ? 'text-success-400' : 'text-noir-text-muted'}`}>{schedule.enabled ? 'ENABLED' : 'DISABLED'}</span></div><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-noir-text-muted"><span>Suite: <span className="font-mono text-noir-text-secondary">{suiteName(schedule.suite_id)}</span></span><span>Cron: <span className="font-mono text-noir-text-secondary">{schedule.cron_expression}</span></span><span>Timezone: <span className="text-noir-text-secondary">{schedule.timezone || 'UTC'}</span></span></div><div className="mt-2 text-xs text-noir-text-muted">{schedule.enabled ? 'Ready for a local scheduler worker' : 'Paused'}</div></div></div><div className="flex items-center gap-1"><button onClick={() => void toggle(schedule)} className="p-2 text-noir-text-muted hover:text-noir-text-primary" aria-label={schedule.enabled ? 'Pause schedule' : 'Enable schedule'}>{schedule.enabled ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}</button><button onClick={() => openEdit(schedule)} className="p-2 text-noir-text-muted hover:text-noir-text-primary" aria-label={`Edit ${schedule.name}`}><PencilIcon className="h-4 w-4" /></button><button onClick={() => void remove(schedule)} className="p-2 text-noir-text-muted hover:text-danger-500" aria-label={`Delete ${schedule.name}`}><TrashIcon className="h-4 w-4" /></button></div></div></div>)}</div>}</div></main><ManagementModal open={modalOpen} title={editing ? 'Edit schedule' : 'Create schedule'} description="Store the schedule configuration for your local workspace." submitLabel={editing ? 'Save changes' : 'Create schedule'} loading={saving} error={modalError} onClose={() => setModalOpen(false)} onSubmit={save}><Field label="Name"><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} className={fieldClassName} placeholder="Daily smoke tests" /></Field><Field label="Suite"><select value={suiteId} onChange={(event) => setSuiteId(event.target.value)} className={fieldClassName}><option value="">Unassigned</option>{suites.map((suite) => <option key={suite.id} value={suite.id}>{suite.name}</option>)}</select></Field><Field label="Cron expression"><input required value={cron} onChange={(event) => setCron(event.target.value)} className={`${fieldClassName} font-mono`} placeholder="0 9 * * *" /></Field><Field label="Timezone"><input required value={timezone} onChange={(event) => setTimezone(event.target.value)} className={fieldClassName} placeholder="UTC" /></Field></ManagementModal></div>;
 }

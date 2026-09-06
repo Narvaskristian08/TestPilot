@@ -1,145 +1,21 @@
-import { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
-import { BetaNotice } from '../components/BetaNotice';
-import { PlusIcon, ServerIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+import { Field, fieldClassName, ManagementModal } from '../components/ManagementModal';
+import { apiClient } from '../services/api';
+import { ManagedEnvironment } from '../types';
+import { GlobeAltIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-interface Environment {
-  id: number;
-  name: string;
-  url: string;
-  type: 'development' | 'staging' | 'production';
-  status: 'active' | 'inactive';
-  lastUsed?: string;
-}
-
-const mockEnvironments: Environment[] = [
-  {
-    id: 1,
-    name: 'Production',
-    url: 'https://example.com',
-    type: 'production',
-    status: 'active',
-    lastUsed: '2 hours ago',
-  },
-  {
-    id: 2,
-    name: 'Staging',
-    url: 'https://staging.example.com',
-    type: 'staging',
-    status: 'active',
-    lastUsed: '1 day ago',
-  },
-  {
-    id: 3,
-    name: 'Development',
-    url: 'http://localhost:3000',
-    type: 'development',
-    status: 'inactive',
-    lastUsed: '3 days ago',
-  },
-];
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Something went wrong. Please try again.';
 
 export function EnvironmentsPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [environments] = useState<Environment[]>(mockEnvironments);
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'production':
-        return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'staging':
-        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'development':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen bg-noir-bg">
-      <Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 lg:ml-64">
-        <DashboardHeader onMenuClick={() => setIsMobileOpen(true)} />
-        
-        <div className="p-6 space-y-6">
-          {/* Page Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Environments</h1>
-              <p className="text-gray-400 mt-1">Manage test environments and configurations</p>
-            </div>
-            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-              <PlusIcon className="w-5 h-5 mr-2" />
-              New Environment
-            </button>
-          </div>
-
-          <BetaNotice surface="Environments" />
-
-          {/* Environments Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {environments.map((env) => (
-              <div
-                key={env.id}
-                className="bg-noir-surface border border-noir-border rounded-lg p-6 hover:border-zinc-500 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center border ${
-                    env.status === 'active'
-                      ? 'bg-noir-elevated border-noir-border'
-                      : 'bg-gray-600/10 border-gray-600/20'
-                  }`}>
-                    <ServerIcon className={`w-6 h-6 ${
-                      env.status === 'active' ? 'text-noir-text-primary' : 'text-gray-400'
-                    }`} />
-                  </div>
-                  <span className={`px-2.5 py-1 text-xs font-medium border rounded-full ${getTypeColor(env.type)}`}>
-                    {env.type.toUpperCase()}
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-semibold text-white mb-2">{env.name}</h3>
-                
-                <div className="flex items-center gap-2 mb-4 text-sm text-gray-400">
-                  <GlobeAltIcon className="w-4 h-4" />
-                  <span className="truncate">{env.url}</span>
-                </div>
-
-                <div className="pt-4 border-t border-noir-border">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`px-2 py-1 rounded-full ${
-                      env.status === 'active'
-                        ? 'bg-green-400/10 text-green-400'
-                        : 'bg-gray-400/10 text-gray-400'
-                    }`}>
-                      {env.status === 'active' ? '● Active' : '● Inactive'}
-                    </span>
-                    {env.lastUsed && (
-                      <span className="text-gray-500 text-xs">
-                        Used {env.lastUsed}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Create New Card */}
-            <div className="bg-noir-surface border-2 border-dashed border-noir-border rounded-lg p-6 hover:border-zinc-500 transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[240px] group">
-              <div className="w-12 h-12 bg-noir-elevated border border-noir-border rounded-md flex items-center justify-center mb-4 group-hover:bg-noir-border transition-colors">
-                <PlusIcon className="w-6 h-6 text-noir-text-secondary" />
-              </div>
-              <h3 className="text-lg font-medium text-white mb-2">Add Environment</h3>
-              <p className="text-sm text-gray-400 text-center">
-                Configure a new test environment
-              </p>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+  const [isMobileOpen, setIsMobileOpen] = useState(false); const [environments, setEnvironments] = useState<ManagedEnvironment[]>([]); const [loading, setLoading] = useState(true); const [pageError, setPageError] = useState(''); const [modalOpen, setModalOpen] = useState(false); const [editing, setEditing] = useState<ManagedEnvironment | null>(null); const [saving, setSaving] = useState(false); const [modalError, setModalError] = useState(''); const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [type, setType] = useState('development'); const [status, setStatus] = useState('active'); const [description, setDescription] = useState('');
+  const load = async () => { setLoading(true); try { setEnvironments(await apiClient.getEnvironments()); setPageError(''); } catch (error) { setPageError(errorMessage(error)); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
+  const openCreate = () => { setEditing(null); setName(''); setUrl(''); setType('development'); setStatus('active'); setDescription(''); setModalError(''); setModalOpen(true); };
+  const openEdit = (environment: ManagedEnvironment) => { setEditing(environment); setName(environment.name); setUrl(environment.url); setType(environment.type); setStatus(environment.status); setDescription(environment.description || ''); setModalError(''); setModalOpen(true); };
+  const save = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setModalError(''); try { const payload = { name, url, type, status, description }; if (editing) await apiClient.updateEnvironment(editing.id, payload); else await apiClient.createEnvironment(payload); setModalOpen(false); await load(); } catch (error) { setModalError(errorMessage(error)); } finally { setSaving(false); } };
+  const remove = async (environment: ManagedEnvironment) => { if (!window.confirm(`Delete “${environment.name}”?`)) return; try { await apiClient.deleteEnvironment(environment.id); await load(); } catch (error) { setPageError(errorMessage(error)); } };
+  const typeColor = type === 'production' ? 'text-danger-400' : type === 'staging' ? 'text-warning-500' : 'text-running-400';
+  return <div className="flex min-h-screen bg-noir-bg"><Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} /><main className="flex-1 lg:ml-64"><DashboardHeader onMenuClick={() => setIsMobileOpen(true)} /><div className="space-y-6 p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-white">Environments</h1><p className="mt-1 text-gray-400">Save the local and remote targets you test most often.</p></div><button onClick={openCreate} className="flex items-center rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg"><PlusIcon className="mr-2 h-5 w-5" />New Environment</button></div>{pageError && <div className="border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-400">{pageError}</div>}{loading ? <div className="py-16 text-center text-noir-text-muted">Loading environments…</div> : environments.length === 0 ? <div className="border border-dashed border-noir-border p-12 text-center"><ServerIcon className="mx-auto mb-4 h-10 w-10 text-noir-text-muted" /><h2 className="text-lg font-medium text-white">No environments yet</h2><button onClick={openCreate} className="mt-5 rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg">Add Environment</button></div> : <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{environments.map((environment) => <div key={environment.id} className="border border-noir-border bg-noir-surface p-5 hover:border-zinc-500"><div className="mb-5 flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center border border-noir-border bg-noir-elevated"><ServerIcon className="h-5 w-5 text-noir-text-secondary" /></div><div className="flex gap-1"><button onClick={() => openEdit(environment)} className="p-2 text-noir-text-muted hover:text-noir-text-primary" aria-label={`Edit ${environment.name}`}><PencilIcon className="h-4 w-4" /></button><button onClick={() => void remove(environment)} className="p-2 text-noir-text-muted hover:text-danger-500" aria-label={`Delete ${environment.name}`}><TrashIcon className="h-4 w-4" /></button></div></div><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold text-white">{environment.name}</h2><span className={`text-[11px] font-medium uppercase ${typeColor}`}>{environment.type}</span></div><div className="mt-3 flex items-center gap-2 text-sm text-noir-text-secondary"><GlobeAltIcon className="h-4 w-4 shrink-0" /><span className="truncate font-mono">{environment.url}</span></div><p className="mt-3 min-h-10 text-sm text-noir-text-muted">{environment.description || 'No description'}</p><div className="mt-4 border-t border-noir-border pt-3 text-xs uppercase tracking-wide"><span className={environment.status === 'active' ? 'text-success-400' : 'text-noir-text-muted'}>● {environment.status}</span></div></div>)}</div>}</div></main><ManagementModal open={modalOpen} title={editing ? 'Edit environment' : 'Create environment'} submitLabel={editing ? 'Save changes' : 'Create environment'} loading={saving} error={modalError} onClose={() => setModalOpen(false)} onSubmit={save}><Field label="Name"><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} className={fieldClassName} placeholder="Development" /></Field><Field label="URL"><input required type="url" value={url} onChange={(event) => setUrl(event.target.value)} className={`${fieldClassName} font-mono`} placeholder="http://localhost:3000" /></Field><Field label="Type"><select value={type} onChange={(event) => setType(event.target.value)} className={fieldClassName}><option value="development">Development</option><option value="staging">Staging</option><option value="production">Production</option></select></Field><Field label="Status"><select value={status} onChange={(event) => setStatus(event.target.value)} className={fieldClassName}><option value="active">Active</option><option value="inactive">Inactive</option></select></Field><Field label="Description"><textarea value={description} onChange={(event) => setDescription(event.target.value)} className={`${fieldClassName} min-h-24`} /></Field></ManagementModal></div>;
 }

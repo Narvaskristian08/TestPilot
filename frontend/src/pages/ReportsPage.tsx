@@ -1,166 +1,22 @@
-import { useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
-import { BetaNotice } from '../components/BetaNotice';
-import { ChartBarIcon, ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { Field, fieldClassName, ManagementModal } from '../components/ManagementModal';
+import { apiClient } from '../services/api';
+import { ManagedReport } from '../types';
+import { ArrowDownTrayIcon, ChartBarIcon, CalendarIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-interface Report {
-  id: number;
-  title: string;
-  period: string;
-  generated: string;
-  tests: number;
-  passRate: number;
-}
-
-const mockReports: Report[] = [
-  {
-    id: 1,
-    title: 'Weekly Summary Report',
-    period: 'Dec 16-22, 2024',
-    generated: '2 hours ago',
-    tests: 156,
-    passRate: 94.2,
-  },
-  {
-    id: 2,
-    title: 'Monthly Performance Report',
-    period: 'December 2024',
-    generated: '1 day ago',
-    tests: 642,
-    passRate: 91.8,
-  },
-  {
-    id: 3,
-    title: 'Sprint Regression Report',
-    period: 'Sprint 24',
-    generated: '3 days ago',
-    tests: 89,
-    passRate: 96.6,
-  },
-];
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Something went wrong. Please try again.';
+const formatDate = (value?: string | null) => value ? new Date(value).toLocaleDateString() : 'All recorded runs';
 
 export function ReportsPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [reports] = useState<Report[]>(mockReports);
-
-  const getPassRateColor = (rate: number) => {
-    if (rate >= 95) return 'text-green-400';
-    if (rate >= 80) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
-  return (
-    <div className="flex min-h-screen bg-noir-bg">
-      <Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 lg:ml-64">
-        <DashboardHeader onMenuClick={() => setIsMobileOpen(true)} />
-        
-        <div className="p-6 space-y-6">
-          {/* Page Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Reports</h1>
-              <p className="text-gray-400 mt-1">View and download test reports</p>
-            </div>
-            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-              <ChartBarIcon className="w-5 h-5 mr-2" />
-              Generate Report
-            </button>
-          </div>
-
-          <BetaNotice surface="Reports" />
-
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-noir-card border border-noir-border rounded-lg p-6">
-              <div className="text-sm text-gray-400 mb-2">Total Reports</div>
-              <div className="text-3xl font-bold text-white">{reports.length}</div>
-            </div>
-            <div className="bg-noir-card border border-noir-border rounded-lg p-6">
-              <div className="text-sm text-gray-400 mb-2">Total Tests Analyzed</div>
-              <div className="text-3xl font-bold text-white">
-                {reports.reduce((sum, r) => sum + r.tests, 0)}
-              </div>
-            </div>
-            <div className="bg-noir-card border border-noir-border rounded-lg p-6">
-              <div className="text-sm text-gray-400 mb-2">Average Pass Rate</div>
-              <div className="text-3xl font-bold text-green-400">
-                {(reports.reduce((sum, r) => sum + r.passRate, 0) / reports.length).toFixed(1)}%
-              </div>
-            </div>
-          </div>
-
-          {/* Reports List */}
-          <div className="space-y-4">
-            {reports.map((report) => (
-              <div
-                key={report.id}
-                className="bg-noir-surface border border-noir-border rounded-lg p-6 hover:border-zinc-500 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 bg-noir-elevated border border-noir-border rounded-md flex items-center justify-center">
-                      <ChartBarIcon className="w-6 h-6 text-noir-text-secondary" />
-                    </div>
-
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white mb-2">{report.title}</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <div className="text-gray-500 mb-1">Period</div>
-                          <div className="text-gray-300 flex items-center gap-1">
-                            <CalendarIcon className="w-4 h-4" />
-                            {report.period}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Tests Analyzed</div>
-                          <div className="text-white font-semibold">{report.tests}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Pass Rate</div>
-                          <div className={`font-semibold ${getPassRateColor(report.passRate)}`}>
-                            {report.passRate}%
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Generated</div>
-                          <div className="text-gray-300">{report.generated}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button disabled title="Available after beta" className="flex items-center gap-2 px-3 py-2 bg-noir-bg border border-noir-border rounded-lg text-gray-300 transition-all disabled:cursor-not-allowed disabled:opacity-50">
-                      <ArrowDownTrayIcon className="w-4 h-4" />
-                      <span className="text-sm">Download</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Empty State */}
-          {reports.length === 0 && (
-            <div className="bg-noir-card border-2 border-dashed border-noir-border rounded-lg p-12 text-center">
-              <ChartBarIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No reports yet</h3>
-              <p className="text-gray-400 mb-6">
-                Generate your first report to see analytics
-              </p>
-              <button disabled title="Available after beta" className="px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-                Generate Report
-              </button>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+  const [isMobileOpen, setIsMobileOpen] = useState(false); const [reports, setReports] = useState<ManagedReport[]>([]); const [loading, setLoading] = useState(true); const [pageError, setPageError] = useState(''); const [modalOpen, setModalOpen] = useState(false); const [title, setTitle] = useState(''); const [periodStart, setPeriodStart] = useState(''); const [periodEnd, setPeriodEnd] = useState(''); const [saving, setSaving] = useState(false); const [modalError, setModalError] = useState('');
+  const load = async () => { setLoading(true); try { setReports(await apiClient.getReports()); setPageError(''); } catch (error) { setPageError(errorMessage(error)); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
+  const openCreate = () => { setTitle(''); setPeriodStart(''); setPeriodEnd(''); setModalError(''); setModalOpen(true); };
+  const generate = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setModalError(''); try { await apiClient.createReport({ title, period_start: periodStart ? new Date(`${periodStart}T00:00:00`).toISOString() : undefined, period_end: periodEnd ? new Date(`${periodEnd}T23:59:59.999`).toISOString() : undefined }); setModalOpen(false); await load(); } catch (error) { setModalError(errorMessage(error)); } finally { setSaving(false); } };
+  const download = (report: ManagedReport) => { const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${report.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report'}.json`; link.click(); URL.revokeObjectURL(url); };
+  const remove = async (report: ManagedReport) => { if (!window.confirm(`Delete “${report.title}”?`)) return; try { await apiClient.deleteReport(report.id); await load(); } catch (error) { setPageError(errorMessage(error)); } };
+  const average = useMemo(() => reports.length ? reports.reduce((sum, report) => sum + Number(report.pass_rate || 0), 0) / reports.length : 0, [reports]);
+  return <div className="flex min-h-screen bg-noir-bg"><Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} /><main className="flex-1 lg:ml-64"><DashboardHeader onMenuClick={() => setIsMobileOpen(true)} /><div className="space-y-6 p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-white">Reports</h1><p className="mt-1 text-gray-400">Generate local summaries from completed test runs.</p></div><button onClick={openCreate} className="flex items-center rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg"><PlusIcon className="mr-2 h-5 w-5" />Generate Report</button></div>{pageError && <div className="border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-400">{pageError}</div>}<div className="grid grid-cols-1 gap-3 md:grid-cols-3"><div className="border border-noir-border bg-noir-surface p-5"><div className="text-xs uppercase tracking-wide text-noir-text-muted">Reports</div><div className="mt-2 text-3xl font-semibold text-white">{reports.length}</div></div><div className="border border-noir-border bg-noir-surface p-5"><div className="text-xs uppercase tracking-wide text-noir-text-muted">Runs analyzed</div><div className="mt-2 text-3xl font-semibold text-white">{reports.reduce((sum, report) => sum + Number(report.total_tests || 0), 0)}</div></div><div className="border border-noir-border bg-noir-surface p-5"><div className="text-xs uppercase tracking-wide text-noir-text-muted">Average pass rate</div><div className="mt-2 text-3xl font-semibold text-success-400">{average.toFixed(1)}%</div></div></div>{loading ? <div className="py-16 text-center text-noir-text-muted">Loading reports…</div> : reports.length === 0 ? <div className="border border-dashed border-noir-border p-12 text-center"><ChartBarIcon className="mx-auto mb-4 h-10 w-10 text-noir-text-muted" /><h2 className="text-lg font-medium text-white">No reports yet</h2><p className="mt-2 text-sm text-noir-text-muted">Generate one after running a few tests.</p><button onClick={openCreate} className="mt-5 rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg">Generate Report</button></div> : <div className="space-y-3">{reports.map((report) => <div key={report.id} className="border border-noir-border bg-noir-surface p-5 hover:border-zinc-500"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-4"><div className="flex h-10 w-10 items-center justify-center border border-noir-border bg-noir-elevated"><ChartBarIcon className="h-5 w-5 text-noir-text-secondary" /></div><div><h2 className="text-base font-semibold text-white">{report.title}</h2><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-noir-text-muted"><span className="flex items-center gap-1"><CalendarIcon className="h-4 w-4" />{formatDate(report.period_start)} – {formatDate(report.period_end)}</span><span>Generated {formatDate(report.created_at)}</span></div></div></div><div className="flex items-center gap-1"><button onClick={() => download(report)} className="flex items-center gap-2 border border-noir-border px-3 py-2 text-xs text-noir-text-secondary hover:text-noir-text-primary"><ArrowDownTrayIcon className="h-4 w-4" />JSON</button><button onClick={() => void remove(report)} className="p-2 text-noir-text-muted hover:text-danger-500" aria-label={`Delete ${report.title}`}><TrashIcon className="h-4 w-4" /></button></div></div><div className="mt-5 grid grid-cols-2 gap-4 border-t border-noir-border pt-4 text-sm md:grid-cols-4"><div><div className="text-xs text-noir-text-muted">Runs</div><div className="mt-1 font-mono text-white">{report.total_tests}</div></div><div><div className="text-xs text-noir-text-muted">Passed</div><div className="mt-1 font-mono text-success-400">{report.passed_tests}</div></div><div><div className="text-xs text-noir-text-muted">Failed</div><div className="mt-1 font-mono text-danger-400">{report.failed_tests}</div></div><div><div className="text-xs text-noir-text-muted">Pass rate</div><div className="mt-1 font-mono text-white">{Number(report.pass_rate || 0).toFixed(1)}%</div></div></div></div>)}</div>}</div></main><ManagementModal open={modalOpen} title="Generate report" description="The report is calculated from the test runs stored in your local database." submitLabel="Generate report" loading={saving} error={modalError} onClose={() => setModalOpen(false)} onSubmit={generate}><Field label="Title"><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} className={fieldClassName} placeholder="Weekly local summary" /></Field><div className="grid grid-cols-2 gap-3"><Field label="From"><input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className={fieldClassName} /></Field><Field label="To"><input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className={fieldClassName} /></Field></div></ManagementModal></div>;
 }

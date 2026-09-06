@@ -78,6 +78,73 @@ export interface UsageStats {
   resetsAt?: string;
 }
 
+export interface ManagedSuite {
+  id: number;
+  name: string;
+  description?: string | null;
+  test_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ManagedCase {
+  id: number;
+  suite_id?: number | null;
+  name: string;
+  type: string;
+  description?: string | null;
+  config?: Record<string, unknown> | null;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ManagedSchedule {
+  id: number;
+  name: string;
+  suite_id?: number | null;
+  cron_expression: string;
+  timezone?: string;
+  enabled?: boolean;
+  next_run?: string | null;
+  last_run?: string | null;
+  last_status?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ManagedEnvironment {
+  id: number;
+  name: string;
+  url: string;
+  type: 'development' | 'staging' | 'production' | string;
+  status: 'active' | 'inactive' | string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ManagedReport {
+  id: number;
+  title: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  warning_tests: number;
+  pass_rate: number;
+  data?: { generated_at?: string; run_ids?: number[] } | null;
+  created_at?: string;
+}
+
+export interface ManagedArtifact extends TestArtifact {
+  name: string;
+  type: string;
+  testRun: string;
+  downloadUrl: string;
+}
+
 // Socket event types
 export interface TestStatusEvent {
   runId: number;

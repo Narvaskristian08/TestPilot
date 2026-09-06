@@ -11,14 +11,14 @@ The repository is a split application:
 - `supabase/`: version-controlled Postgres migrations and Storage configuration for the hosted beta.
 - `tests/` and `pages/`: Playwright regression tests and page objects for the application.
 
-The primary product surface is the NOIR dashboard in `frontend/src/pages/NoirDashboard.tsx`. Supporting dashboard pages, test-run detail views, auth pages, usage tracking, artifact views, and several mocked management pages already exist.
+The primary product surface is the NOIR dashboard in `frontend/src/pages/NoirDashboard.tsx`. Supporting dashboard pages, test-run detail views, auth pages, usage tracking, artifact views, and local-first management pages are implemented in the same React application.
 
 The local development targets documented by the project are:
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:3001`
 
-## Current progress snapshot (2026-09-04)
+## Current progress snapshot (2026-09-06)
 
 ### Implemented
 
@@ -33,6 +33,9 @@ The local development targets documented by the project are:
 - NOIR Developer Console theme refactor applied across the public landing page, dashboard shell, management pages, auth/profile screens, test-run views, progress states, result cards, tables, modals, and usage surfaces.
 - Neutral palette is centralized in `frontend/tailwind.config.js` and `frontend/src/index.css`; status colors are reserved for passed, failed, warning, and running states.
 - Publication wiring now includes a Vercel SPA rewrite, a Render backend blueprint, environment-driven API/WebSocket URLs, aligned Socket.IO subscriptions, and private Supabase artifact storage configuration.
+- Local-first management workflows now use real API-backed CRUD for suites, cases, schedules, environments, reports, and artifact browsing. These routes use the existing SQLite fallback when Supabase is absent and remain ownership-scoped when hosted Supabase is enabled.
+- Reports aggregate persisted test runs and can be downloaded as JSON. Artifact downloads continue through the existing ownership-checked test-run route.
+- QA-run usage limits are opt-in (`ENABLE_USAGE_LIMITS=true`); local development is unlimited by default. API rate limiting, URL validation, SSRF protection, and ownership checks remain enabled.
 
 ### Verified caveats
 
@@ -48,7 +51,7 @@ The local development targets documented by the project are:
 3. Keep `/` public and marketing-oriented. Dashboard navigation, test-run pages, auth redirects, and internal links must use `/dashboard` when they mean the NOIR dashboard.
 4. Preserve guest testing and authenticated testing flows. Do not move optional usage enforcement into the client or store secrets in frontend source.
 5. Keep target URL validation strict to `http:` and `https:`. Continue relying on backend SSRF protection for requests initiated by the test runner.
-6. Use realistic product copy and data. Avoid claiming that mocked management pages or unverified integrations are fully live.
+6. Use realistic product copy and data. Avoid claiming that scheduler execution or unverified third-party integrations are live; the current schedule feature persists configuration and exposes toggles, while execution requires a scheduler worker.
 7. Do not overwrite or remove user-owned work in the dirty working tree. Make focused, additive edits and inspect diffs before handing off.
 8. Validate frontend changes with `npm run build` from `frontend/`. If the change affects the backend, run its available typecheck/build as well. Record unresolved validation issues explicitly.
 9. For routing changes, smoke-check that `/`, `/dashboard`, `/login`, `/register`, and `/test/:id` still resolve without a blocking runtime error when their dependencies are available.
@@ -88,14 +91,15 @@ The local development targets documented by the project are:
 - Restyle the public landing page to introduce the product before the dashboard while preserving the URL-to-dashboard handoff and all existing links/forms.
 - Validate the frontend build and verify that both `/` and `/dashboard?target=...` are served by the local app.
 
-### Phase 6 — Public beta publication readiness
+### Phase 6 — Local-first product completion
 
 - Deploy the Vite frontend from `frontend/` to Vercel with SPA rewrites and production API, Socket.IO, and Supabase environment variables.
 - Run the Express/Socket.IO/Playwright backend as a single Render web service with Chromium installed and `/health` enabled.
 - Persist screenshots and traces in the private `test-artifacts` Supabase Storage bucket while retaining local temporary-file support for development.
 - Apply Supabase migrations and storage configuration through the GitHub workflow using repository secrets; never commit credentials.
-- Keep mock-backed management routes visible but clearly labeled and non-mutating for the public beta.
-- Verify API rate limits, CORS, WebSocket progress, artifact access, URL safety, cancellation, deletion, and redeploy persistence before merging to `main`. QA-run caps are only verified when explicitly enabled.
+- Replace placeholder management data with local/hosted API-backed CRUD and preserve existing response shapes for test runs and artifacts.
+- Keep the single-instance scheduler boundary explicit until a worker/queue can execute suites with a configured target environment.
+- Verify API rate limits, CORS, WebSocket progress, artifact access, URL safety, cancellation, deletion, management ownership, and local persistence before merging to `main`. QA-run caps are only verified when explicitly enabled.
 
 ## Definition of done
 
@@ -108,3 +112,4 @@ The local development targets documented by the project are:
 - The frontend can be deployed from `frontend/` to Vercel and the backend can be deployed from `backend/` to Render using the documented environment variables.
 - Supabase migrations and the private `test-artifacts` bucket are managed from version-controlled configuration.
 - A production smoke test confirms the complete URL → queued test → live progress → results/artifacts flow.
+- A local smoke test confirms SQLite health plus suite, case, schedule, environment, report, and artifact-management endpoints without hosted credentials.

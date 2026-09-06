@@ -1,143 +1,24 @@
-import { useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
-import { BetaNotice } from '../components/BetaNotice';
-import { PlusIcon, MagnifyingGlassIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { Field, fieldClassName, ManagementModal } from '../components/ManagementModal';
+import { apiClient } from '../services/api';
+import { ManagedCase, ManagedSuite } from '../types';
+import { CheckCircleIcon, ClockIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-interface TestCase {
-  id: number;
-  name: string;
-  type: string;
-  description: string;
-  suite: string;
-  lastRun?: string;
-  status: 'passed' | 'failed' | 'pending';
-}
-
-const mockTestCases: TestCase[] = [
-  { id: 1, name: 'Page Availability Check', type: 'Availability', description: 'Verify page loads successfully', suite: 'Smoke Tests', lastRun: '2 hours ago', status: 'passed' },
-  { id: 2, name: 'Form Validation', type: 'Functional', description: 'Test form input validation', suite: 'Regression Suite', lastRun: '2 hours ago', status: 'passed' },
-  { id: 3, name: 'Button Interactions', type: 'UI', description: 'Verify all buttons are clickable', suite: 'Smoke Tests', lastRun: '1 day ago', status: 'failed' },
-  { id: 4, name: 'Responsive Design', type: 'Visual', description: 'Test responsive breakpoints', suite: 'E2E User Flows', lastRun: '3 days ago', status: 'passed' },
-  { id: 5, name: 'Console Errors', type: 'Performance', description: 'Check for console errors', suite: 'Smoke Tests', lastRun: '2 hours ago', status: 'passed' },
-  { id: 6, name: 'Accessibility Compliance', type: 'Accessibility', description: 'WCAG 2.1 AA compliance check', suite: 'Regression Suite', status: 'pending' },
-];
+const CASE_TYPES = ['AVAILABILITY', 'LINK_TEST', 'BUTTON_TEST', 'FORM_TEST', 'RESPONSIVE', 'CONSOLE_ERRORS', 'ACCESSIBILITY', 'SECURITY', 'PERFORMANCE'];
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : 'Something went wrong. Please try again.';
 
 export function TestCasesPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [testCases] = useState<TestCase[]>(mockTestCases);
-
-  const filteredCases = testCases.filter(tc => 
-    tc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tc.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tc.suite.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'passed': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'failed': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      case 'pending': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      'Availability': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      'Functional': 'bg-noir-elevated text-noir-text-secondary border-noir-border',
-      'UI': 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-      'Visual': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-      'Performance': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-      'Accessibility': 'bg-green-500/10 text-green-400 border-green-500/20',
-    };
-    return colors[type] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-  };
-
-  return (
-    <div className="flex min-h-screen bg-noir-bg">
-      <Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} />
-      
-      <main className="flex-1 lg:ml-64">
-        <DashboardHeader onMenuClick={() => setIsMobileOpen(true)} />
-        
-        <div className="p-6 space-y-6">
-          {/* Page Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Test Cases</h1>
-              <p className="text-gray-400 mt-1">Manage individual test cases</p>
-            </div>
-            <button disabled title="Available after beta" className="flex items-center px-4 py-2 bg-noir-text-primary text-noir-bg rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50">
-              <PlusIcon className="w-5 h-5 mr-2" />
-              New Test Case
-            </button>
-          </div>
-
-          <BetaNotice surface="Test cases" />
-
-          {/* Search */}
-          <div className="bg-noir-card border border-noir-border rounded-lg p-4">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search test cases..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-noir-secondary border border-noir-border rounded-md text-noir-text-primary placeholder-noir-text-muted focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500/40"
-              />
-            </div>
-          </div>
-
-          {/* Test Cases List */}
-          <div className="space-y-3">
-            {filteredCases.map((testCase) => (
-              <div
-                key={testCase.id}
-                className="bg-noir-surface border border-noir-border rounded-lg p-5 hover:border-zinc-500 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-white">{testCase.name}</h3>
-                      <span className={`px-2.5 py-1 text-xs font-medium border rounded-full ${getTypeColor(testCase.type)}`}>
-                        {testCase.type}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400">{testCase.description}</p>
-                  </div>
-                  <div className={`px-3 py-1.5 text-xs font-medium border rounded-lg ${getStatusColor(testCase.status)}`}>
-                    {testCase.status === 'passed' && <CheckCircleIcon className="w-4 h-4 inline mr-1" />}
-                    {testCase.status === 'pending' && <ClockIcon className="w-4 h-4 inline mr-1" />}
-                    {testCase.status.toUpperCase()}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6 text-sm text-gray-400 pt-3 border-t border-noir-border">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">Suite:</span>
-                    <span className="text-noir-text-secondary font-mono">{testCase.suite}</span>
-                  </div>
-                  {testCase.lastRun && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">Last run:</span>
-                      <span>{testCase.lastRun}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredCases.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              No test cases found
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+  const [isMobileOpen, setIsMobileOpen] = useState(false); const [cases, setCases] = useState<ManagedCase[]>([]); const [suites, setSuites] = useState<ManagedSuite[]>([]); const [searchQuery, setSearchQuery] = useState(''); const [loading, setLoading] = useState(true); const [pageError, setPageError] = useState('');
+  const [modalOpen, setModalOpen] = useState(false); const [editing, setEditing] = useState<ManagedCase | null>(null); const [saving, setSaving] = useState(false); const [modalError, setModalError] = useState(''); const [name, setName] = useState(''); const [type, setType] = useState(CASE_TYPES[0]); const [description, setDescription] = useState(''); const [suiteId, setSuiteId] = useState(''); const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const suiteName = (id?: number | null) => suites.find((suite) => suite.id === id)?.name || 'Unassigned';
+  const load = async () => { setLoading(true); try { const [loadedCases, loadedSuites] = await Promise.all([apiClient.getCases(), apiClient.getSuites()]); setCases(loadedCases); setSuites(loadedSuites); setPageError(''); } catch (error) { setPageError(errorMessage(error)); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
+  const filteredCases = useMemo(() => cases.filter((item) => [item.name, item.type, item.description || '', suiteName(item.suite_id)].some((value) => value.toLowerCase().includes(searchQuery.toLowerCase()))), [cases, searchQuery, suites]);
+  const openCreate = () => { setEditing(null); setName(''); setType(CASE_TYPES[0]); setDescription(''); setSuiteId(''); setStatus('active'); setModalError(''); setModalOpen(true); };
+  const openEdit = (item: ManagedCase) => { setEditing(item); setName(item.name); setType(item.type); setDescription(item.description || ''); setSuiteId(item.suite_id ? String(item.suite_id) : ''); setStatus(item.status || 'active'); setModalError(''); setModalOpen(true); };
+  const save = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setModalError(''); const payload = { name, type, description, suite_id: suiteId ? Number(suiteId) : null, status }; try { if (editing) await apiClient.updateCase(editing.id, payload); else await apiClient.createCase(payload); setModalOpen(false); await load(); } catch (error) { setModalError(errorMessage(error)); } finally { setSaving(false); } };
+  const remove = async (item: ManagedCase) => { if (!window.confirm(`Delete “${item.name}”?`)) return; try { await apiClient.deleteCase(item.id); await load(); } catch (error) { setPageError(errorMessage(error)); } };
+  return <div className="flex min-h-screen bg-noir-bg"><Sidebar isMobileOpen={isMobileOpen} onClose={() => setIsMobileOpen(false)} /><main className="flex-1 lg:ml-64"><DashboardHeader onMenuClick={() => setIsMobileOpen(true)} /><div className="space-y-6 p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-bold text-white">Test Cases</h1><p className="mt-1 text-gray-400">Manage reusable checks for your local suites.</p></div><button onClick={openCreate} className="flex items-center rounded-md bg-noir-text-primary px-4 py-2 text-sm font-medium text-noir-bg"><PlusIcon className="mr-2 h-5 w-5" />New Test Case</button></div>{pageError && <div className="border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-400">{pageError}</div>}<div className="border border-noir-border bg-noir-surface p-4"><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search by name, type, or suite…" className={fieldClassName} /></div>{loading ? <div className="py-16 text-center text-noir-text-muted">Loading test cases…</div> : filteredCases.length === 0 ? <div className="border border-dashed border-noir-border p-12 text-center text-noir-text-muted">No test cases found. Create one to get started.</div> : <div className="space-y-3">{filteredCases.map((item) => <div key={item.id} className="border border-noir-border bg-noir-surface p-5 hover:border-zinc-500"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-3"><h2 className="text-base font-semibold text-white">{item.name}</h2><span className="border border-noir-border bg-noir-elevated px-2 py-1 font-mono text-[11px] text-noir-text-secondary">{item.type}</span></div><p className="mt-2 text-sm text-noir-text-secondary">{item.description || 'No description'}</p></div><div className="flex items-center gap-2"><span className={`flex items-center gap-1 text-xs ${item.status === 'active' ? 'text-success-400' : 'text-noir-text-muted'}`}>{item.status === 'active' ? <CheckCircleIcon className="h-4 w-4" /> : <ClockIcon className="h-4 w-4" />}{item.status?.toUpperCase()}</span><button onClick={() => openEdit(item)} className="p-2 text-noir-text-muted hover:text-noir-text-primary" aria-label={`Edit ${item.name}`}><PencilIcon className="h-4 w-4" /></button><button onClick={() => void remove(item)} className="p-2 text-noir-text-muted hover:text-danger-500" aria-label={`Delete ${item.name}`}><TrashIcon className="h-4 w-4" /></button></div></div><div className="mt-4 border-t border-noir-border pt-3 text-xs text-noir-text-muted">Suite: <span className="font-mono text-noir-text-secondary">{suiteName(item.suite_id)}</span></div></div>)}</div>}</div></main><ManagementModal open={modalOpen} title={editing ? 'Edit test case' : 'Create test case'} submitLabel={editing ? 'Save changes' : 'Create test case'} loading={saving} error={modalError} onClose={() => setModalOpen(false)} onSubmit={save}><Field label="Name"><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} className={fieldClassName} placeholder="Homepage availability" /></Field><Field label="Type"><select value={type} onChange={(event) => setType(event.target.value)} className={fieldClassName}>{CASE_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}</select></Field><Field label="Suite"><select value={suiteId} onChange={(event) => setSuiteId(event.target.value)} className={fieldClassName}><option value="">Unassigned</option>{suites.map((suite) => <option key={suite.id} value={suite.id}>{suite.name}</option>)}</select></Field><Field label="Status"><select value={status} onChange={(event) => setStatus(event.target.value as 'active' | 'inactive')} className={fieldClassName}><option value="active">Active</option><option value="inactive">Inactive</option></select></Field><Field label="Description"><textarea value={description} onChange={(event) => setDescription(event.target.value)} className={`${fieldClassName} min-h-24`} /></Field></ManagementModal></div>;
 }
