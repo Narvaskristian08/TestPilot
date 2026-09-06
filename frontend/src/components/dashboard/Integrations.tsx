@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowTopRightOnSquareIcon,
   ChatBubbleLeftRightIcon,
@@ -10,6 +11,7 @@ import {
 type IntegrationIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export function Integrations() {
+  const navigate = useNavigate();
   const integrations: { name: string; icon: IntegrationIcon; color: string }[] = [
     { name: 'Slack', icon: ChatBubbleLeftRightIcon, color: 'hover:border-zinc-500' },
     { name: 'Discord', icon: HashtagIcon, color: 'hover:border-zinc-500' },
@@ -26,6 +28,8 @@ export function Integrations() {
         {integrations.map((integration) => (
           <button
             key={integration.name}
+            onClick={() => navigate('/settings?tab=integrations')}
+            aria-label={`Configure ${integration.name}`}
             className={`flex flex-col items-center justify-center p-3 bg-noir-secondary hover:bg-noir-elevated border border-noir-border ${integration.color} rounded-md transition-colors duration-200`}
             title={integration.name}
           >
@@ -35,17 +39,14 @@ export function Integrations() {
         ))}
       </div>
       
-      <div className="mt-6 pt-6 border-t border-noir-border">
-        <h4 className="text-sm font-semibold text-noir-text-primary mb-2">
-          Need help?
-        </h4>
-        <a
-          href="#"
-          className="text-sm text-noir-text-secondary hover:text-noir-text-primary transition-colors inline-flex items-center"
+      <div className="mt-6 border-t border-noir-border pt-6">
+        <button
+          onClick={() => navigate('/settings?tab=integrations')}
+          className="inline-flex items-center text-sm text-noir-text-secondary transition-colors hover:text-noir-text-primary"
         >
-          Check out our documentation
+          Open integration settings
           <ArrowTopRightOnSquareIcon aria-hidden="true" className="ml-1 h-4 w-4" />
-        </a>
+        </button>
       </div>
     </div>
   );

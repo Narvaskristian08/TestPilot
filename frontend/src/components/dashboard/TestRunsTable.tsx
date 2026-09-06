@@ -1,4 +1,4 @@
-import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { StatusBadge } from './StatusBadge';
 import { Link } from 'react-router-dom';
 
@@ -79,9 +79,7 @@ export function TestRunsTable({ runs, onViewAll }: TestRunsTableProps) {
                 </td>
                 <td className="px-5 py-3 whitespace-nowrap">
                   <span className="inline-flex items-center text-sm text-noir-text-secondary">
-                    <span className={`w-2 h-2 rounded-full mr-2 ${
-                      run.environment === 'Production' ? 'bg-danger-500' : 'bg-warning-500'
-                    }`} />
+                    <span className="mr-2 h-2 w-2 rounded-full bg-noir-text-muted" />
                     {run.environment}
                   </span>
                 </td>
@@ -89,9 +87,9 @@ export function TestRunsTable({ runs, onViewAll }: TestRunsTableProps) {
                   {run.startedAt}
                 </td>
                 <td className="px-5 py-3 whitespace-nowrap">
-                  <button className="p-1 text-noir-text-muted hover:text-noir-text-primary rounded transition-colors">
-                    <EllipsisVerticalIcon className="w-5 h-5" />
-                  </button>
+                  <Link to={`/test/${run.id}`} title="Open test run" className="rounded p-1 text-noir-text-muted transition-colors hover:text-noir-text-primary">
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  </Link>
                 </td>
               </tr>
             ))}

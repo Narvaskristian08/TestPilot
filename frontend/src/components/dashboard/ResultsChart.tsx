@@ -1,4 +1,3 @@
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface ResultsData {
   total: number;
@@ -35,10 +34,7 @@ export function ResultsChart({ data }: ResultsChartProps) {
         <h3 className="text-lg font-semibold text-noir-text-primary">
           Test Results Overview
         </h3>
-        <button className="flex items-center text-sm text-noir-text-secondary hover:text-noir-text-primary transition-colors">
-          Last 7 days
-          <ChevronDownIcon className="w-4 h-4 ml-1" />
-        </button>
+        <span className="text-sm text-noir-text-muted">Loaded runs</span>
       </div>
 
       {/* Donut Chart */}

@@ -36,9 +36,9 @@ export function NoirDashboard() {
   const recentRuns = testRuns.slice(0, 5).map(run => ({
     id: run.id!,
     name: `Test Run #${run.id}`,
-    suite: 'Automated QA',
+    suite: formatTestMode(run.test_mode),
     status: mapStatus(run.status, run.overall_status || undefined),
-    environment: 'Production',
+    environment: getHostname(run.url),
     startedAt: formatDate(run.created_at!),
   }));
 
@@ -49,9 +49,9 @@ export function NoirDashboard() {
     .map(run => ({
       id: run.id!,
       testName: `Test Run #${run.id}`,
-      suite: 'Automated QA',
-      environment: 'Production',
-      browser: run.browser === 'chromium' ? 'Chrome 126' : run.browser,
+      suite: formatTestMode(run.test_mode),
+      environment: getHostname(run.url),
+      browser: run.browser,
       timestamp: formatDate(run.created_at!),
       error: run.error_message || 'Test execution failed',
     }));
@@ -112,8 +112,8 @@ export function NoirDashboard() {
               <StatCard
                 title="Total Test Runs"
                 value={stats?.totalRuns || 0}
-                subtitle={`↑ ${stats?.trend.totalChange || 0}% vs last 7 days`}
-                trend="up"
+                subtitle={`${formatTrend(stats?.trend.totalChange)} vs previous 7 days`}
+                trend={trendDirection(stats?.trend.totalChange)}
                 icon={<ChartBarIcon className="w-5 h-5 text-noir-text-secondary" />}
                 iconBgColor="bg-noir-elevated"
               />
@@ -127,8 +127,7 @@ export function NoirDashboard() {
               <StatCard
                 title="Failed"
                 value={stats?.failed || 0}
-                subtitle={`↑ ${stats?.failRate.toFixed(1) || 0}% failure rate`}
-                trend="up"
+                subtitle={`${stats?.failRate.toFixed(1) || 0}% failure rate`}
                 icon={<XCircleIcon className="w-5 h-5 text-danger-500" />}
                 iconBgColor="bg-danger-600"
               />
@@ -164,7 +163,7 @@ export function NoirDashboard() {
                 
                 <QuickActions
                   onNewTestRun={() => setShowNewTestModal(true)}
-                  onUploadSuite={() => navigate('/test-suites')}
+                  onManageSuites={() => navigate('/test-suites')}
                   onViewReports={() => navigate('/reports')}
                   onManageEnvironments={() => navigate('/environments')}
                 />
@@ -222,4 +221,24 @@ function formatDate(dateString: string): string {
     day: 'numeric', 
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined 
   });
+}
+
+function formatTestMode(mode?: string): string {
+  if (!mode) return 'URL run';
+  return mode.replace(/[_-]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getHostname(url: string): string {
+  try { return new URL(url).hostname; } catch { return 'Unknown target'; }
+}
+
+function formatTrend(value?: number | null): string {
+  if (value === undefined || value === null) return '—';
+  const trend = value;
+  return `${trend > 0 ? '+' : ''}${trend.toFixed(1)}%`;
+}
+
+function trendDirection(value?: number | null): 'up' | 'down' | undefined {
+  if (value === undefined || value === null || value === 0) return undefined;
+  return value > 0 ? 'up' : 'down';
 }

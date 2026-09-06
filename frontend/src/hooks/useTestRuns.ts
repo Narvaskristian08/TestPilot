@@ -10,9 +10,9 @@ interface DashboardStats {
   passRate: number;
   failRate: number;
   trend: {
-    totalChange: number;
-    passedChange: number;
-    failedChange: number;
+    totalChange: number | null;
+    passedChange: number | null;
+    failedChange: number | null;
   };
 }
 
@@ -71,11 +71,28 @@ function calculateStats(runs: TestRun[]): DashboardStats {
   const passRate = totalRuns > 0 ? (passed / totalRuns) * 100 : 0;
   const failRate = totalRuns > 0 ? (failed / totalRuns) * 100 : 0;
   
-  // For trend, compare with older runs (simplified - would need historical data)
+  const now = Date.now();
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const currentPeriod = runs.filter((run) => now - new Date(run.created_at || 0).getTime() <= week);
+  const previousPeriod = runs.filter((run) => {
+    const age = now - new Date(run.created_at || 0).getTime();
+    return age > week && age <= week * 2;
+  });
+  const percentageChange = (current: number, previous: number): number | null => {
+    if (previous === 0) return current === 0 ? 0 : null;
+    return Number((((current - previous) / previous) * 100).toFixed(1));
+  };
+
   const trend = {
-    totalChange: 18, // Mock for now - would need historical comparison
-    passedChange: 12,
-    failedChange: 25,
+    totalChange: percentageChange(currentPeriod.length, previousPeriod.length),
+    passedChange: percentageChange(
+      currentPeriod.filter(r => r.overall_status === 'PASSED').length,
+      previousPeriod.filter(r => r.overall_status === 'PASSED').length,
+    ),
+    failedChange: percentageChange(
+      currentPeriod.filter(r => r.overall_status === 'FAILED').length,
+      previousPeriod.filter(r => r.overall_status === 'FAILED').length,
+    ),
   };
 
   return {

@@ -17,6 +17,21 @@ export const UsageDisplay: React.FC<UsageDisplayProps> = ({
   resetsAt,
   onCreateAccount,
 }) => {
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return (
+      <div className="border border-noir-border bg-noir-surface p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-noir-text-primary">Local usage</h3>
+            <p className="mt-1 text-sm text-noir-text-muted">QA runs are unlimited in local mode.</p>
+          </div>
+          <span className="border border-noir-border bg-noir-elevated px-3 py-1 text-xs font-medium text-noir-text-secondary">Unlimited</span>
+        </div>
+        <p className="mt-4 font-mono text-2xl font-bold text-noir-text-primary">{used} runs completed</p>
+      </div>
+    );
+  }
+
   const percentage = (used / limit) * 100;
   const isNearLimit = remaining <= 1;
   const isAtLimit = remaining === 0;

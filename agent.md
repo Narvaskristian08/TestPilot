@@ -35,6 +35,7 @@ The local development targets documented by the project are:
 - Publication wiring now includes a Vercel SPA rewrite, a Render backend blueprint, environment-driven API/WebSocket URLs, aligned Socket.IO subscriptions, and private Supabase artifact storage configuration.
 - Local-first management workflows now use real API-backed CRUD for suites, cases, schedules, environments, reports, and artifact browsing. These routes use the existing SQLite fallback when Supabase is absent and remain ownership-scoped when hosted Supabase is enabled.
 - Reports aggregate persisted test runs and can be downloaded as JSON. Artifact downloads continue through the existing ownership-checked test-run route.
+- Shared dashboard placeholders were removed: workspace/profile details are local or auth-derived, notification and integration controls navigate to working settings, dashboard trends are calculated from loaded runs, and row actions open the actual test-run detail route.
 - QA-run usage limits are opt-in (`ENABLE_USAGE_LIMITS=true`); local development is unlimited by default. API rate limiting, URL validation, SSRF protection, and ownership checks remain enabled.
 
 ### Verified caveats

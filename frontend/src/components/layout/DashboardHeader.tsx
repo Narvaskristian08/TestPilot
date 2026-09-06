@@ -1,5 +1,7 @@
 import { BellIcon, PlusIcon, Bars3Icon } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface DashboardHeaderProps {
   onNewTestRun?: () => void;
@@ -7,7 +9,19 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ onNewTestRun, onMenuClick }: DashboardHeaderProps) {
-  const [notifications] = useState(1);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [localDisplayName, setLocalDisplayName] = useState('');
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('noir-local-settings');
+      const settings = stored ? JSON.parse(stored) as { displayName?: string } : null;
+      setLocalDisplayName(settings?.displayName || '');
+    } catch {
+      setLocalDisplayName('');
+    }
+  }, [user]);
   
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -15,6 +29,8 @@ export function DashboardHeader({ onNewTestRun, onMenuClick }: DashboardHeaderPr
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || localDisplayName || 'Developer';
 
   return (
     <div className="bg-noir-secondary/95 border-b border-noir-border sticky top-0 z-30 backdrop-blur-sm">
@@ -33,7 +49,7 @@ export function DashboardHeader({ onNewTestRun, onMenuClick }: DashboardHeaderPr
             
             <div>
               <h1 className="text-xl lg:text-2xl font-semibold text-noir-text-primary mb-1 tracking-tight">
-                {getGreeting()}, Kristian
+                {getGreeting()}, {displayName}
               </h1>
               <p className="text-xs lg:text-sm text-noir-text-secondary hidden sm:block">
                 Here's what's happening with your tests today.
@@ -43,11 +59,12 @@ export function DashboardHeader({ onNewTestRun, onMenuClick }: DashboardHeaderPr
 
           <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Notifications */}
-            <button className="relative p-2 text-noir-text-secondary hover:text-white hover:bg-noir-border rounded transition-colors">
+            <button
+              onClick={() => navigate('/settings?tab=notifications')}
+              title="Open notification preferences"
+              className="relative rounded p-2 text-noir-text-secondary transition-colors hover:bg-noir-border hover:text-white"
+            >
               <BellIcon className="w-5 h-5" />
-              {notifications > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full" />
-              )}
             </button>
 
             {/* New Test Run Button */}

@@ -1,6 +1,6 @@
 import {
   PlayIcon,
-  ArrowUpTrayIcon,
+  FolderIcon,
   ChartBarIcon,
   ServerIcon,
 } from '@heroicons/react/24/outline';
@@ -12,23 +12,23 @@ interface Action {
 }
 
 interface QuickActionsProps {
-  onNewTestRun?: () => void;
-  onUploadSuite?: () => void;
-  onViewReports?: () => void;
-  onManageEnvironments?: () => void;
+  onNewTestRun: () => void;
+  onManageSuites: () => void;
+  onViewReports: () => void;
+  onManageEnvironments: () => void;
 }
 
 export function QuickActions({
   onNewTestRun,
-  onUploadSuite,
+  onManageSuites,
   onViewReports,
   onManageEnvironments,
 }: QuickActionsProps) {
   const actions: Action[] = [
-    { name: 'New Test Run', icon: PlayIcon, onClick: onNewTestRun || (() => {}) },
-    { name: 'Upload Test Suite', icon: ArrowUpTrayIcon, onClick: onUploadSuite || (() => {}) },
-    { name: 'View Reports', icon: ChartBarIcon, onClick: onViewReports || (() => {}) },
-    { name: 'Manage Environments', icon: ServerIcon, onClick: onManageEnvironments || (() => {}) },
+    { name: 'New Test Run', icon: PlayIcon, onClick: onNewTestRun },
+    { name: 'Manage Test Suites', icon: FolderIcon, onClick: onManageSuites },
+    { name: 'View Reports', icon: ChartBarIcon, onClick: onViewReports },
+    { name: 'Manage Environments', icon: ServerIcon, onClick: onManageEnvironments },
   ];
 
   return (

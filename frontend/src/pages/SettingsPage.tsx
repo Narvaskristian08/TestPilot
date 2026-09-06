@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
 import { apiClient } from '../services/api';
@@ -13,9 +14,10 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 function loadPreferences(): Preferences { try { const stored = localStorage.getItem(SETTINGS_KEY); return stored ? { ...defaultPreferences, ...JSON.parse(stored), notifications: { ...defaultPreferences.notifications, ...JSON.parse(stored).notifications } } : defaultPreferences; } catch { return defaultPreferences; } }
 
 export function SettingsPage() {
-  const [isMobileOpen, setIsMobileOpen] = useState(false); const [activeTab, setActiveTab] = useState('profile'); const [preferences, setPreferences] = useState<Preferences>(defaultPreferences); const [saved, setSaved] = useState(''); const [error, setError] = useState(''); const [localKey, setLocalKey] = useState(''); const [copied, setCopied] = useState(false);
-  useEffect(() => { setPreferences(loadPreferences()); setLocalKey(localStorage.getItem(KEY_STORAGE) || ''); }, []);
+  const [searchParams] = useSearchParams(); const [isMobileOpen, setIsMobileOpen] = useState(false); const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile'); const [preferences, setPreferences] = useState<Preferences>(defaultPreferences); const [saved, setSaved] = useState(''); const [error, setError] = useState(''); const [localKey, setLocalKey] = useState(''); const [copied, setCopied] = useState(false);
   const tabs = [{ id: 'profile', name: 'Profile', icon: UserCircleIcon }, { id: 'notifications', name: 'Notifications', icon: BellIcon }, { id: 'api', name: 'Local API key', icon: KeyIcon }, { id: 'integrations', name: 'Integrations', icon: GlobeAltIcon }, { id: 'security', name: 'Security', icon: ShieldCheckIcon }];
+  useEffect(() => { setPreferences(loadPreferences()); setLocalKey(localStorage.getItem(KEY_STORAGE) || ''); }, []);
+  useEffect(() => { const requestedTab = searchParams.get('tab'); if (requestedTab && tabs.some((tab) => tab.id === requestedTab)) setActiveTab(requestedTab); }, [searchParams]);
   const savePreferences = async () => { setError(''); setSaved(''); try { if (apiClient.getAuthToken() && preferences.displayName.trim()) await apiClient.updateProfile({ display_name: preferences.displayName.trim() }); localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences)); setSaved('Saved'); } catch (err) { setError(errorMessage(err)); } };
   const updateNotification = (key: string, value: boolean) => setPreferences((current) => ({ ...current, notifications: { ...current.notifications, [key]: value } }));
   const generateKey = () => { const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().replace(/-/g, '') : `${Date.now()}${Math.random().toString(36).slice(2)}`; const next = `noir_local_${random}`; setLocalKey(next); localStorage.setItem(KEY_STORAGE, next); setCopied(false); };
