@@ -1,4 +1,5 @@
-# 🎭 TestPilot
+# 🎭 Noir
+
 
 > **Automated QA Testing Platform for Websites**
 
